@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { hash } from 'bcryptjs';
-import { UserRole } from 'generated/prisma/client';
+import { User, UserRole } from 'generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -34,6 +34,22 @@ export class UserService {
 
   findOne(id: number) {
     return `This action returns a #${id} user`;
+  }
+
+  async findUserByUsername(username: string): Promise<User | null> {
+    return await this.prisma.user.findUnique({
+      where: {
+        username,
+      },
+    });
+  }
+
+  async findUserByEmail(email: string): Promise<User | null> {
+    return await this.prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
