@@ -43,26 +43,17 @@ model Specialization {
 }
 
 model Patient {
-  id     String @id @default(uuid())
-  userId String @unique
-  weight Float
-  height Float
-
-  user           User            @relation(fields: [userId], references: [id])
-  medicalHistory MedicalHistory?
-  consultations  Consultation[]
-}
-
-model MedicalHistory {
   id          String   @id @default(uuid())
-  patientId   String   @unique
-  conditions  String[] // e.g. ["hypertension", "asthma"]
+  userId      String   @unique
+  weight      Float
+  height      Float
+  conditions  String[]
   allergies   String[]
   medications String[]
-  notes       String? // freeform fallback
-  updatedAt   DateTime @updatedAt
+  notes       String?
 
-  patient Patient @relation(fields: [patientId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  consultations Consultation[]
 }
 
 model Doctor {
