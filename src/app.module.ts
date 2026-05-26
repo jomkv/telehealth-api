@@ -3,20 +3,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './api/user/user.module';
 import { AuthModule } from './api/auth/auth.module';
-import { JwtModule } from '@nestjs/jwt';
-import { ENV_VARS } from './shared/env-variables';
+import { DoctorModule } from './api/doctor/doctor.module';
+import { PatientModule } from './api/patient/patient.module';
 
 @Module({
-  imports: [
-    UserModule,
-    JwtModule.register({
-      secret: ENV_VARS.jwtSecret(),
-      signOptions: {
-        expiresIn: '7d',
-      },
-    }),
-    AuthModule,
-  ],
+  imports: [UserModule, AuthModule, DoctorModule, PatientModule],
   controllers: [AppController],
   providers: [AppService],
 })

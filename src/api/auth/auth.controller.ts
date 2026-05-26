@@ -2,6 +2,8 @@ import {
   BadRequestException,
   Body,
   Controller,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Post,
   Res,
@@ -20,6 +22,7 @@ export class AuthController {
     private readonly userService: UserService,
   ) {}
 
+  @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(
     @Body(ValidationPipe) loginDto: LoginDto,
@@ -30,7 +33,7 @@ export class AuthController {
     // Note: might want to use more vague error messages, instead of specifying what input was wrong.
 
     if (!user) {
-      throw new NotFoundException('User does not exist');
+      throw new NotFoundException('Email not found');
     }
 
     if (
@@ -54,7 +57,7 @@ export class AuthController {
     // Explicitly exclude password from response payload
     const { password, ...userPayload } = user;
 
-    return { ...userPayload, accessToken };
+    return userPayload;
   }
 
   @Post('logout')
