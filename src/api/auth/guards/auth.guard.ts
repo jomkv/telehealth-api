@@ -8,13 +8,26 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
 import { Role } from 'generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { UserPayload } from 'src/shared/@types/user';
 import { ENV_VARS } from 'src/shared/env-variables';
 
 export const ROLES_KEY = 'roles';
 export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
 
+export const ONBOARDED_KEY = 'onboardedPolicy';
+export type OnboardedPolicy = 'onboarded' | 'unonboarded' | 'any';
+export const UnonboardedOnly = () => SetMetadata(ONBOARDED_KEY, 'unonboarded');
+export const AllowAnyOnboarding = () => SetMetadata(ONBOARDED_KEY, 'any');
+
+/**
+ * What this does:
+ * 1. Protect endpoint(s) by ensuring there is a valid auth cookie.
+ * 2. Optional RBAC via `@Roles` decorator, can pass in specific role(s) to further protect endpoint(s).
+ * 3. Passes found user of type `UserPayload` onto request handler, accessible via `req.user`.
+ */
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
@@ -24,7 +37,7 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
+    const req: Request = context.switchToHttp().getRequest();
     const token = req?.cookies?.access_token;
 
     if (!token) {
@@ -47,9 +60,9 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid access token');
     }
 
-    const user = await this.prisma.user.findUnique({
+    const user: UserPayload | null = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true },
+      select: { id: true, role: true, isOnboarded: true },
     });
 
     if (!user) {
@@ -57,6 +70,23 @@ export class AuthGuard implements CanActivate {
     }
 
     req.user = user;
+
+    const onboardedPolicy =
+      this.reflector.getAllAndOverride<OnboardedPolicy>(ONBOARDED_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? 'onboarded';
+
+    // Only check isOnboarded status if policy is not "any"
+    if (onboardedPolicy !== 'any') {
+      if (onboardedPolicy === 'onboarded' && !user.isOnboarded) {
+        throw new ForbiddenException('User not onboarded');
+      }
+
+      if (onboardedPolicy === 'unonboarded' && user.isOnboarded) {
+        throw new ForbiddenException('User already onboarded');
+      }
+    }
 
     const requiredRoles = this.reflector.getAllAndOverride<Role[]>(ROLES_KEY, [
       context.getHandler(),
