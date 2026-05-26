@@ -1,13 +1,18 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OnboardDoctorDto } from './dto/onboard-doctor.dto';
+import { Prisma } from 'generated/prisma/client';
 
 @Injectable()
 export class DoctorService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async onboard(userId: string, dto: OnboardDoctorDto) {
-    const existing = await this.prisma.doctor.findUnique({
+  async onboard(
+    userId: string,
+    dto: OnboardDoctorDto,
+    tx: Prisma.TransactionClient = this.prisma,
+  ) {
+    const existing = await tx.doctor.findUnique({
       where: { userId },
       select: { id: true },
     });
@@ -16,7 +21,7 @@ export class DoctorService {
       throw new ConflictException('Doctor already onboarded');
     }
 
-    return this.prisma.doctor.create({
+    return tx.doctor.create({
       data: {
         userId,
         specializationId: dto.specializationId,

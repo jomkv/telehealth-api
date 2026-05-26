@@ -50,39 +50,41 @@ export class UserService {
   }
 
   async onboard(user: UserPayload, onboardUserDto: OnboardUserDto) {
-    if (user.role === Role.PATIENT) {
-      if (!onboardUserDto.patient) {
-        throw new BadRequestException('Patient onboarding data required');
+    await this.prisma.$transaction(async (tx) => {
+      if (user.role === Role.PATIENT) {
+        if (!onboardUserDto.patient) {
+          throw new BadRequestException('Patient onboarding data required');
+        }
+
+        await this.patientService.onboard(user.id, onboardUserDto.patient, tx);
       }
 
-      await this.patientService.onboard(user.id, onboardUserDto.patient);
-    }
+      if (user.role === Role.DOCTOR) {
+        if (!onboardUserDto.doctor) {
+          throw new BadRequestException('Doctor onboarding data required');
+        }
 
-    if (user.role === Role.DOCTOR) {
-      if (!onboardUserDto.doctor) {
-        throw new BadRequestException('Doctor onboarding data required');
+        await this.doctorService.onboard(user.id, onboardUserDto.doctor, tx);
       }
 
-      await this.doctorService.onboard(user.id, onboardUserDto.doctor);
-    }
+      await tx.user.update({
+        where: { id: user.id },
+        data: { isOnboarded: true },
+      });
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { isOnboarded: true },
-    });
-
-    return this.prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        birthday: true,
-        mobileNumber: true,
-        isOnboarded: true,
-        createdAt: true,
-      },
+      return tx.user.findUnique({
+        where: { id: user.id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          birthday: true,
+          mobileNumber: true,
+          isOnboarded: true,
+          createdAt: true,
+        },
+      });
     });
   }
 
