@@ -13,14 +13,111 @@ datasource db {
 }
 
 model User {
-  id       Int      @id @default(autoincrement())
-  username String   @unique
-  email    String   @unique
-  password String
-  role     UserRole @default(DOCTOR)
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password     String
+  name         String
+  birthday     DateTime
+  profilePic   String?
+  mobileNumber String
+  role         Role
+  isOnboarded  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  patient Patient?
+  doctor  Doctor?
 }
 
-enum UserRole {
-  USER
+enum Role {
+  PATIENT
   DOCTOR
+}
+
+model Specialization {
+  id          String @id @default(uuid())
+  label       String @unique
+  description String
+  embedding   Json // Float[] stored as JSON, populated at seed time
+
+  doctors Doctor[]
+}
+
+model Patient {
+  id     String @id @default(uuid())
+  userId String @unique
+  weight Float
+  height Float
+
+  user           User            @relation(fields: [userId], references: [id])
+  medicalHistory MedicalHistory?
+  consultations  Consultation[]
+}
+
+model MedicalHistory {
+  id          String   @id @default(uuid())
+  patientId   String   @unique
+  conditions  String[] // e.g. ["hypertension", "asthma"]
+  allergies   String[]
+  medications String[]
+  notes       String? // freeform fallback
+  updatedAt   DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+}
+
+model Doctor {
+  id               String  @id @default(uuid())
+  userId           String  @unique
+  specializationId String
+  bio              String?
+  yearsOfPractice  Int?
+
+  consultations Consultation[]
+  availability  Availability[]
+
+  user           User           @relation(fields: [userId], references: [id])
+  specialization Specialization @relation(fields: [specializationId], references: [id])
+}
+
+model Availability {
+  id              String    @id @default(uuid())
+  doctorId        String
+  startTime       DateTime
+  endTime         DateTime
+  rescheduledFrom DateTime?
+  createdAt       DateTime  @default(now())
+
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+}
+
+model Consultation {
+  id           String   @id @default(uuid())
+  patientId    String
+  doctorId     String
+  scheduledAt  DateTime
+  meetingLink  String
+  patientNotes String // symptoms/concerns at booking time
+  doctorNotes  String // post-consultation notes / directions
+  createdAt    DateTime @default(now())
+
+  status ConsultationStatus @default(PENDING)
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+}
+
+enum ConsultationStatus {
+  PENDING
+  ONGOING
+  DONE
+  CANCELLED
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
