@@ -25,8 +25,7 @@ export class AuthController {
     @Body(ValidationPipe) loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const user = await this.userService.findUserByUsername(loginDto.username);
-    // const user = await this.userService.findUserByEmail(loginDto.email)
+    const user = await this.userService.findUserByEmail(loginDto.email);
 
     // Note: might want to use more vague error messages, instead of specifying what input was wrong.
 
