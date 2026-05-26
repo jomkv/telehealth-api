@@ -31,8 +31,4 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   mobileNumber: string;
-
-  @IsOptional()
-  @IsBoolean()
-  isOnboarded?: boolean;
 }

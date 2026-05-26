@@ -21,7 +21,7 @@ export class PatientService {
       throw new ConflictException('Patient already onboarded');
     }
 
-    return tx.patient.create({
+    return await tx.patient.create({
       data: {
         userId,
         weight: dto.weight,

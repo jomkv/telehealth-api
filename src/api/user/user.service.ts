@@ -34,7 +34,7 @@ export class UserService {
         role: createUserDto.role,
         birthday: birthdayDate,
         mobileNumber: createUserDto.mobileNumber,
-        isOnboarded: createUserDto.isOnboarded ?? false,
+        isOnboarded: false,
       },
       select: {
         id: true,

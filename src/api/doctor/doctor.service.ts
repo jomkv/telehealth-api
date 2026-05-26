@@ -21,7 +21,7 @@ export class DoctorService {
       throw new ConflictException('Doctor already onboarded');
     }
 
-    return tx.doctor.create({
+    return await tx.doctor.create({
       data: {
         userId,
         specializationId: dto.specializationId,
