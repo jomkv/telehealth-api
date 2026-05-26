@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@huggingface/inference':
+        specifier: ^4.13.18
+        version: 4.13.18
       '@nestjs/common':
         specifier: ^10.0.0
         version: 10.4.22(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -348,6 +351,17 @@ packages:
     engines: {node: '>=18.14.1'}
     peerDependencies:
       hono: ^4
+
+  '@huggingface/inference@4.13.18':
+    resolution: {integrity: sha512-n0dP3FhmIqJoLU5yGoG6lBZVW50+IgeLDubLL1P28zG4Adp2rhKYQGt5j52JCwlmKDf2ruWjuIcfrjkobT0RlQ==}
+    engines: {node: '>=18'}
+
+  '@huggingface/jinja@0.5.9':
+    resolution: {integrity: sha512-uWTG+l3VJRsl7EXxYizuL3P+cCPoc3cRqbWWRcQN0FhejRfbdq0RNhCmbY/YDtnTcz9icdLYuLDjsnz4d8JMuw==}
+    engines: {node: '>=18'}
+
+  '@huggingface/tasks@0.21.1':
+    resolution: {integrity: sha512-EGy9VE8h9d39JgyKY5+Nwl0mcGQOK3el8rlR9Y09KVCZOHsLHAsOP1e7D9M7P781dSObZW9lokdfT+Sm26Iv3g==}
 
   '@humanwhocodes/config-array@0.13.0':
     resolution: {integrity: sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw==}
@@ -3629,6 +3643,15 @@ snapshots:
   '@hono/node-server@1.19.11(hono@4.12.23)':
     dependencies:
       hono: 4.12.23
+
+  '@huggingface/inference@4.13.18':
+    dependencies:
+      '@huggingface/jinja': 0.5.9
+      '@huggingface/tasks': 0.21.1
+
+  '@huggingface/jinja@0.5.9': {}
+
+  '@huggingface/tasks@0.21.1': {}
 
   '@humanwhocodes/config-array@0.13.0':
     dependencies:

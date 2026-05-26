@@ -7,4 +7,5 @@ export const ENV_VARS = {
   baseUrl: () => process.env.BASE_URL,
   clientUrl: () => process.env.CLIENT_URL,
   dbUrl: () => process.env.DATABASE_URL,
+  hfKey: () => process.env.HF_KEY,
 };
