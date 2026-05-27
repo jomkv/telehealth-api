@@ -9,38 +9,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from 'generated/prisma/client';
 import { ConsultationStatus, DayOfWeek } from 'generated/prisma/enums';
 import { randomUUID } from 'crypto';
-
-const consultationInclude = {
-  patient: {
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          birthday: true,
-          profilePic: true,
-          mobileNumber: true,
-        },
-      },
-    },
-  },
-  doctor: {
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          birthday: true,
-          profilePic: true,
-          mobileNumber: true,
-        },
-      },
-      specialization: { select: { id: true, label: true, description: true } },
-    },
-  },
-} as const satisfies Prisma.ConsultationInclude;
+import { consultationInclude } from 'src/shared/constants';
+import { PopulatedConsultation } from 'src/shared/@types/consultation';
 
 @Injectable()
 export class ConsultationService {
@@ -75,80 +45,11 @@ export class ConsultationService {
       throw new NotFoundException('Doctor not found');
     }
 
-    const scheduledAt = new Date(scheduledAtInput);
-
-    if (Number.isNaN(scheduledAt.getTime())) {
-      throw new BadRequestException('Invalid scheduledAt');
-    }
-
-    if (scheduledAt.getTime() <= Date.now()) {
-      throw new BadRequestException('scheduledAt must be in the future');
-    }
-
-    if (
-      scheduledAt.getMinutes() !== 0 ||
-      scheduledAt.getSeconds() !== 0 ||
-      scheduledAt.getMilliseconds() !== 0
-    ) {
-      throw new BadRequestException('scheduledAt must be on the hour');
-    }
-
-    const slotEnd = new Date(scheduledAt.getTime() + 60 * 60 * 1000);
-
-    const [doctorConflict, patientConflict] = await Promise.all([
-      this.prisma.consultation.findFirst({
-        where: {
-          doctorId: doctor.id,
-          scheduledAt: {
-            gte: scheduledAt,
-            lt: slotEnd,
-          },
-          status: {
-            in: [ConsultationStatus.PENDING, ConsultationStatus.ONGOING],
-          },
-        },
-        select: { id: true },
-      }),
-      this.prisma.consultation.findFirst({
-        where: {
-          patientId: patient.id,
-          scheduledAt: {
-            gte: scheduledAt,
-            lt: slotEnd,
-          },
-          status: {
-            in: [ConsultationStatus.PENDING, ConsultationStatus.ONGOING],
-          },
-        },
-        select: { id: true },
-      }),
-    ]);
-
-    if (doctorConflict) {
-      throw new ConflictException('Doctor already booked for this slot');
-    }
-
-    if (patientConflict) {
-      throw new ConflictException('Patient already booked for this slot');
-    }
-
-    const dayOfWeek = this.toDayOfWeek(scheduledAt);
-    const hour = scheduledAt.getHours();
-    const timeSlot = `${String(hour).padStart(2, '0')}:00`;
-
-    const availability = await this.prisma.availabilityTemplate.findFirst({
-      where: {
-        doctorId: doctor.id,
-        dayOfWeek,
-        startTime: { lte: timeSlot },
-        endTime: { gt: timeSlot },
-      },
-      select: { id: true },
+    const scheduledAt = await this.validateSlot({
+      doctorId: doctor.id,
+      patientId: patient.id,
+      scheduledAtInput,
     });
-
-    if (!availability) {
-      throw new BadRequestException('Doctor not available for selected time');
-    }
 
     const consultationId = randomUUID();
     const meetingLink = this.buildMeetingLink(consultationId);
@@ -183,28 +84,144 @@ export class ConsultationService {
     return `https://meet.jit.si/consult-${consultationId}`;
   }
 
-  findDoctorConsultations(doctorId: string) {
+  findDoctorConsultations(doctorId: string): Promise<PopulatedConsultation[]> {
     return this.prisma.consultation.findMany({
       where: { doctorId },
       include: consultationInclude,
     });
   }
 
-  findById(id: string) {
+  findById(id: string): Promise<PopulatedConsultation | null> {
     return this.prisma.consultation.findUnique({
       where: { id },
       include: consultationInclude,
     });
   }
 
-  cancel(id: string) {
+  addDoctorNotes(consultationId: string, doctorNotes: string) {
+    return this.prisma.consultation.update({
+      where: { id: consultationId },
+      data: { doctorNotes },
+    });
+  }
+
+  async reschedule(
+    consultation: PopulatedConsultation,
+    scheduledAtInput: string,
+  ) {
+    const scheduledAt = await this.validateSlot({
+      doctorId: consultation.doctorId,
+      patientId: consultation.patientId,
+      scheduledAtInput,
+      excludeConsultationId: consultation.id,
+    });
+
+    return this.prisma.consultation.update({
+      where: { id: consultation.id },
+      data: {
+        scheduledAt,
+        rescheduledFrom: consultation.scheduledAt,
+      },
+    });
+  }
+
+  cancel(consultationId: string) {
     return this.prisma.consultation.update({
       where: {
-        id,
+        id: consultationId,
       },
       data: {
         status: ConsultationStatus.CANCELLED,
       },
     });
+  }
+
+  private async validateSlot(params: {
+    doctorId: string;
+    patientId: string;
+    scheduledAtInput: string;
+    excludeConsultationId?: string;
+  }) {
+    const { doctorId, patientId, scheduledAtInput, excludeConsultationId } =
+      params;
+
+    const scheduledAt = new Date(scheduledAtInput);
+
+    if (Number.isNaN(scheduledAt.getTime())) {
+      throw new BadRequestException('Invalid scheduledAt');
+    }
+
+    if (scheduledAt.getTime() <= Date.now()) {
+      throw new BadRequestException('scheduledAt must be in the future');
+    }
+
+    if (
+      scheduledAt.getMinutes() !== 0 ||
+      scheduledAt.getSeconds() !== 0 ||
+      scheduledAt.getMilliseconds() !== 0
+    ) {
+      throw new BadRequestException('scheduledAt must be on the hour');
+    }
+
+    const slotEnd = new Date(scheduledAt.getTime() + 60 * 60 * 1000);
+    const conflictBase: Prisma.ConsultationWhereInput = {
+      scheduledAt: {
+        gte: scheduledAt,
+        lt: slotEnd,
+      },
+      status: {
+        in: [ConsultationStatus.PENDING, ConsultationStatus.ONGOING],
+      },
+    };
+    const exclude = excludeConsultationId
+      ? { id: { not: excludeConsultationId } }
+      : {};
+
+    const [doctorConflict, patientConflict] = await Promise.all([
+      this.prisma.consultation.findFirst({
+        where: {
+          doctorId,
+          ...conflictBase,
+          ...exclude,
+        },
+        select: { id: true },
+      }),
+      this.prisma.consultation.findFirst({
+        where: {
+          patientId,
+          ...conflictBase,
+          ...exclude,
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    if (doctorConflict) {
+      throw new ConflictException('Doctor already booked for this slot');
+    }
+
+    if (patientConflict) {
+      throw new ConflictException('Patient already booked for this slot');
+    }
+
+    const dayOfWeek = this.toDayOfWeek(scheduledAt);
+    const hour = scheduledAt.getHours();
+    const timeSlot = `${String(hour).padStart(2, '0')}:00`;
+
+    const availability = await this.prisma.availabilityTemplate.findFirst({
+      where: {
+        doctorId,
+        dayOfWeek,
+        startTime: { lte: timeSlot },
+        endTime: { gt: timeSlot },
+      },
+      select: { id: true },
+    });
+
+    if (!availability) {
+      throw new BadRequestException('Doctor not available for selected time');
+    }
+
+    return scheduledAt;
   }
 }

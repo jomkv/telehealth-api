@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { PopulatedConsultation } from 'src/shared/@types/consultation';
 
 const mockPrisma = {
   patient: {
@@ -18,6 +19,8 @@ const mockPrisma = {
   consultation: {
     findFirst: jest.fn(),
     create: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
   },
   availabilityTemplate: {
     findFirst: jest.fn(),
@@ -263,6 +266,92 @@ describe('ConsultationService', () => {
         },
       },
       select: { id: true },
+    });
+  });
+
+  it('returns consultation by id', async () => {
+    mockPrisma.consultation.findUnique.mockResolvedValue({
+      id: 'consultation-1',
+    });
+
+    const result = await service.findById('consultation-1');
+
+    expect(result).toEqual({ id: 'consultation-1' });
+    expect(mockPrisma.consultation.findUnique).toHaveBeenCalledWith({
+      where: { id: 'consultation-1' },
+      include: expect.any(Object),
+    });
+  });
+
+  it('cancels consultation by id', async () => {
+    mockPrisma.consultation.update.mockResolvedValue({
+      id: 'consultation-1',
+      status: 'CANCELLED',
+    });
+
+    const result = await service.cancel('consultation-1');
+
+    expect(result).toEqual({
+      id: 'consultation-1',
+      status: 'CANCELLED',
+    });
+    expect(mockPrisma.consultation.update).toHaveBeenCalledWith({
+      where: { id: 'consultation-1' },
+      data: { status: 'CANCELLED' },
+    });
+  });
+
+  it('adds doctor notes for owned consultation', async () => {
+    mockPrisma.consultation.update.mockResolvedValue({
+      id: 'consultation-1',
+      doctorNotes: 'Take rest',
+    });
+
+    const result = await service.addDoctorNotes('consultation-1', 'Take rest');
+
+    expect(result).toEqual({
+      id: 'consultation-1',
+      doctorNotes: 'Take rest',
+    });
+    expect(mockPrisma.consultation.update).toHaveBeenCalledWith({
+      where: { id: 'consultation-1' },
+      data: { doctorNotes: 'Take rest' },
+    });
+  });
+
+  it('reschedules consultation when slot valid', async () => {
+    const consultation = {
+      id: 'consultation-1',
+      doctorId: 'doctor-1',
+      patientId: 'patient-1',
+      scheduledAt: new Date('2026-05-27T11:00:00.000Z'),
+    } as unknown as PopulatedConsultation;
+    mockPrisma.consultation.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    mockPrisma.availabilityTemplate.findFirst.mockResolvedValue({
+      id: 'availability-1',
+    });
+    mockPrisma.consultation.update.mockResolvedValue({
+      id: 'consultation-1',
+      scheduledAt: new Date('2026-05-27T12:00:00.000Z'),
+    });
+
+    const result = await service.reschedule(
+      consultation,
+      '2026-05-27T12:00:00.000Z',
+    );
+
+    expect(result).toEqual({
+      id: 'consultation-1',
+      scheduledAt: new Date('2026-05-27T12:00:00.000Z'),
+    });
+    expect(mockPrisma.consultation.update).toHaveBeenCalledWith({
+      where: { id: 'consultation-1' },
+      data: {
+        scheduledAt: new Date('2026-05-27T12:00:00.000Z'),
+        rescheduledFrom: new Date('2026-05-27T11:00:00.000Z'),
+      },
     });
   });
 });

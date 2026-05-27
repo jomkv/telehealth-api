@@ -8,18 +8,18 @@ import {
   ValidationPipe,
   UseGuards,
   Req,
-  BadRequestException,
   NotFoundException,
-  Res,
-  ForbiddenException,
 } from '@nestjs/common';
 import { ConsultationService } from './consultation.service';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
+import { DoctorNotesDto } from './dto/doctor-notes.dto';
+import { RescheduleConsultationDto } from './dto/reschedule-consultation.dto';
 import { AuthGuard, Roles } from '../auth/guards/auth.guard';
-import { ConsultationStatus, Role } from 'generated/prisma/enums';
+import { Role } from 'generated/prisma/enums';
 import { Request } from 'express';
 import { DoctorService } from '../doctor/doctor.service';
 import { Doctor } from 'generated/prisma/client';
+import { ConsultationGuard, RequireNotDone } from './guards/consultation.guard';
 
 @Controller('consultation')
 export class ConsultationController {
@@ -35,10 +35,6 @@ export class ConsultationController {
     @Req() req: Request,
     @Body(ValidationPipe) createConsultationDto: CreateConsultationDto,
   ) {
-    if (!req.user) {
-      throw new BadRequestException('Missing user context');
-    }
-
     return this.consultationService.create(req.user.id, createConsultationDto);
   }
 
@@ -46,10 +42,6 @@ export class ConsultationController {
   @UseGuards(AuthGuard)
   @Roles(Role.DOCTOR)
   async findAll(@Req() req: Request) {
-    if (!req.user) {
-      throw new BadRequestException('Missing user context');
-    }
-
     const doctor: Doctor | null = await this.doctorService.findByUserId(
       req.user.id,
     );
@@ -66,34 +58,35 @@ export class ConsultationController {
     return this.consultationService.findById(id);
   }
 
+  @Patch(':id/doctor-notes')
+  @UseGuards(AuthGuard, ConsultationGuard)
+  @Roles(Role.DOCTOR)
+  addDoctorNotes(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body(ValidationPipe) doctorNotesDto: DoctorNotesDto,
+  ) {
+    return this.consultationService.addDoctorNotes(
+      id,
+      doctorNotesDto.doctorNotes,
+    );
+  }
+
+  @Patch(':id/reschedule')
+  @UseGuards(AuthGuard, ConsultationGuard)
+  @RequireNotDone()
+  reschedule(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body(ValidationPipe) rescheduleDto: RescheduleConsultationDto,
+  ) {
+    return this.consultationService.reschedule(req.consultation, req.user.id);
+  }
+
   @Patch(':id/cancel')
-  @UseGuards(AuthGuard)
-  async cancel(@Res() req: Request, @Param('id') id: string) {
-    if (!req.user) {
-      throw new BadRequestException('Missing user context');
-    }
-
-    const consultation = await this.consultationService.findById(id);
-
-    if (!consultation) {
-      throw new NotFoundException('Consultation not found');
-    }
-
-    // If req.user is not the patient AND doctor of the consultation
-    if (
-      req.user.id !== consultation.doctor.userId &&
-      req.user.id !== consultation.patient.userId
-    ) {
-      throw new ForbiddenException('You do not have access to this resource');
-    }
-
-    if (
-      consultation.status === ConsultationStatus.CANCELLED ||
-      consultation.status === ConsultationStatus.DONE
-    ) {
-      throw new BadRequestException('Consultation already cancelled/done');
-    }
-
-    return await this.consultationService.cancel(id);
+  @UseGuards(AuthGuard, ConsultationGuard)
+  @RequireNotDone()
+  cancel(@Param('id') id: string) {
+    return this.consultationService.cancel(id);
   }
 }

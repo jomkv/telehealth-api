@@ -13,8 +13,8 @@ import { PopulatedConsultation } from 'src/shared/@types/consultation';
 import { ConsultationService } from '../consultation.service';
 import { Request } from 'express';
 
-export const REQUIRE_DONE_KEY = 'requireDone';
-export const RequireDone = () => SetMetadata(REQUIRE_DONE_KEY, true);
+export const REQUIRE_NOT_DONE_KEY = 'requireNotDone';
+export const RequireNotDone = () => SetMetadata(REQUIRE_NOT_DONE_KEY, true);
 
 /**
  * Pre-requisite:
@@ -58,14 +58,15 @@ export class ConsultationGuard implements CanActivate {
       throw new ForbiddenException('You do not have access to this resource');
     }
 
-    const requireDone: boolean =
-      this.reflector.getAllAndOverride<boolean>(REQUIRE_DONE_KEY, [
+    const requireNotDone: boolean =
+      this.reflector.getAllAndOverride<boolean>(REQUIRE_NOT_DONE_KEY, [
         context.getHandler(),
         context.getClass(),
       ]) ?? false;
 
     if (
-      (requireDone && consultation.status === ConsultationStatus.CANCELLED) ||
+      (requireNotDone &&
+        consultation.status === ConsultationStatus.CANCELLED) ||
       consultation.status === ConsultationStatus.DONE
     ) {
       throw new BadRequestException('Consultation already cancelled/done');
