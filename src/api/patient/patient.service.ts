@@ -7,6 +7,26 @@ import { Patient, Prisma } from 'generated/prisma/client';
 export class PatientService {
   constructor(private readonly prisma: PrismaService) {}
 
+  findById(patientId: string) {
+    return this.prisma.patient.findUnique({
+      where: { id: patientId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            birthday: true,
+            mobileNumber: true,
+            isOnboarded: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+  }
+
   findByUserId(userId: string): Promise<Patient | null> {
     return this.prisma.patient.findUnique({
       where: {
