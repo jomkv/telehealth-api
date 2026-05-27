@@ -64,32 +64,44 @@ model Doctor {
   yearsOfPractice  Int?
 
   consultations Consultation[]
-  availability  Availability[]
+  availability  AvailabilityTemplate[]
 
   user           User           @relation(fields: [userId], references: [id])
   specialization Specialization @relation(fields: [specializationId], references: [id])
 }
 
-model Availability {
-  id              String    @id @default(uuid())
-  doctorId        String
-  startTime       DateTime
-  endTime         DateTime
-  rescheduledFrom DateTime?
-  createdAt       DateTime  @default(now())
+model AvailabilityTemplate {
+  id        String    @id @default(uuid())
+  doctorId  String
+  dayOfWeek DayOfWeek
+  startTime String // "09:00", hourly intervals, no minutes
+  endTime   String // "17:00", hourly intervals, no minutes
 
   doctor Doctor @relation(fields: [doctorId], references: [id])
+
+  @@unique([doctorId, dayOfWeek])
+}
+
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
 }
 
 model Consultation {
-  id           String   @id @default(uuid())
-  patientId    String
-  doctorId     String
-  scheduledAt  DateTime
-  meetingLink  String
-  patientNotes String // symptoms/concerns at booking time
-  doctorNotes  String // post-consultation notes / directions
-  createdAt    DateTime @default(now())
+  id              String    @id @default(uuid())
+  patientId       String
+  doctorId        String
+  scheduledAt     DateTime
+  meetingLink     String
+  patientNotes    String // symptoms/concerns at booking time
+  doctorNotes     String? // post-consultation notes / directions, initially empty (will be filled later by doctor)
+  rescheduledFrom DateTime?
+  createdAt       DateTime  @default(now())
 
   status ConsultationStatus @default(PENDING)
 
