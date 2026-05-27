@@ -48,6 +48,19 @@ const seedUsersData: SeedUser[] = [
       yearsOfPractice: 8,
     },
   },
+  {
+    name: 'Sample Patient 2',
+    email: 'samplep2@example.com',
+    password: 'user123',
+    role: Role.PATIENT,
+    birthday: new Date('1990-07-21'),
+    mobileNumber: '+15550000003',
+    isOnboarded: true,
+    patient: {
+      weight: 75.0,
+      height: 180.0,
+    },
+  },
 ];
 
 export async function seedUsers(prisma: PrismaClient) {
