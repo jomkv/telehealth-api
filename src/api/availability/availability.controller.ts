@@ -41,7 +41,9 @@ export class AvailabilityController {
       throw new BadRequestException('Missing user context');
     }
 
-    const doctor: Doctor | null = await this.doctorService.getMe(req.user.id);
+    const doctor: Doctor | null = await this.doctorService.findByUserId(
+      req.user.id,
+    );
 
     if (!doctor) {
       throw new NotFoundException('Doctor not found');

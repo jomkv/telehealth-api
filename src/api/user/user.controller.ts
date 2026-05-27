@@ -43,8 +43,8 @@ export class UserController {
       throw new NotFoundException('User not found');
     }
 
-    const meDoctor = await this.doctorService.getMe(req.user.id);
-    const mePatient = await this.patientService.getMe(req.user.id);
+    const meDoctor = await this.doctorService.findByUserId(req.user.id);
+    const mePatient = await this.patientService.findByUserId(req.user.id);
 
     return { ...meUser, doctor: meDoctor, patient: mePatient };
   }

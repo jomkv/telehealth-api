@@ -7,7 +7,7 @@ import { Doctor, Prisma } from 'generated/prisma/client';
 export class DoctorService {
   constructor(private readonly prisma: PrismaService) {}
 
-  getMe(userId: string): Promise<Doctor | null> {
+  findByUserId(userId: string): Promise<Doctor | null> {
     return this.prisma.doctor.findUnique({
       where: {
         userId,
