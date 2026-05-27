@@ -13,7 +13,7 @@ export class AvailabilityService {
       orderBy: { dayOfWeek: 'asc' },
     });
 
-    return { availability: rows };
+    return rows;
   }
 
   async upsertTemplate(doctorId: string, dto: UpsertAvailabilityDto) {

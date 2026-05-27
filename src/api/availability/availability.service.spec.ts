@@ -34,7 +34,7 @@ describe('AvailabilityService', () => {
 
       const result = await service.getByDoctor('doctor-1');
 
-      expect(result).toEqual({ availability: rows });
+      expect(result).toEqual(rows);
       expect(mockPrisma.availabilityTemplate.findMany).toHaveBeenCalledWith({
         where: { doctorId: 'doctor-1' },
         orderBy: { dayOfWeek: 'asc' },
@@ -44,7 +44,7 @@ describe('AvailabilityService', () => {
     it('returns empty array when doctor has no template', async () => {
       mockPrisma.availabilityTemplate.findMany.mockResolvedValue([]);
       const result = await service.getByDoctor('doctor-1');
-      expect(result).toEqual({ availability: [] });
+      expect(result).toEqual([]);
     });
   });
 
