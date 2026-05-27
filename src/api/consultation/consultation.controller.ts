@@ -18,14 +18,17 @@ import { AuthGuard, Roles } from '../auth/guards/auth.guard';
 import { Role } from 'generated/prisma/enums';
 import { Request } from 'express';
 import { DoctorService } from '../doctor/doctor.service';
-import { Doctor } from 'generated/prisma/client';
+import { Doctor, Patient } from 'generated/prisma/client';
 import { ConsultationGuard, RequireNotDone } from './guards/consultation.guard';
+import { PopulatedConsultation } from 'src/shared/@types/consultation';
+import { PatientService } from '../patient/patient.service';
 
 @Controller('consultation')
 export class ConsultationController {
   constructor(
     private readonly consultationService: ConsultationService,
     private readonly doctorService: DoctorService,
+    private readonly patientService: PatientService,
   ) {}
 
   @Post()
@@ -38,19 +41,30 @@ export class ConsultationController {
     return this.consultationService.create(req.user.id, createConsultationDto);
   }
 
-  @Get('doctor')
+  @Get()
   @UseGuards(AuthGuard)
-  @Roles(Role.DOCTOR)
-  async findAll(@Req() req: Request) {
-    const doctor: Doctor | null = await this.doctorService.findByUserId(
-      req.user.id,
-    );
+  async findAll(@Req() req: Request): Promise<PopulatedConsultation[]> {
+    if (req.user.role === Role.DOCTOR) {
+      const doctor: Doctor | null = await this.doctorService.findByUserId(
+        req.user.id,
+      );
 
-    if (!doctor) {
-      throw new NotFoundException('Doctor not found');
+      if (!doctor) {
+        throw new NotFoundException('Doctor not found');
+      }
+
+      return this.consultationService.findDoctorConsultations(doctor.id);
+    } else {
+      const patient: Patient | null = await this.patientService.findByUserId(
+        req.user.id,
+      );
+
+      if (!patient) {
+        throw new NotFoundException('Patient not found');
+      }
+
+      return this.consultationService.findPatientConsultations(patient.id);
     }
-
-    return this.consultationService.findDoctorConsultations(doctor.id);
   }
 
   @Get(':id')

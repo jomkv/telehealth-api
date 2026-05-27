@@ -84,6 +84,15 @@ export class ConsultationService {
     return `https://meet.jit.si/consult-${consultationId}`;
   }
 
+  findPatientConsultations(
+    patientId: string,
+  ): Promise<PopulatedConsultation[]> {
+    return this.prisma.consultation.findMany({
+      where: { patientId },
+      include: consultationInclude,
+    });
+  }
+
   findDoctorConsultations(doctorId: string): Promise<PopulatedConsultation[]> {
     return this.prisma.consultation.findMany({
       where: { doctorId },
