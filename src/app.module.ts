@@ -5,9 +5,10 @@ import { UserModule } from './api/user/user.module';
 import { AuthModule } from './api/auth/auth.module';
 import { DoctorModule } from './api/doctor/doctor.module';
 import { PatientModule } from './api/patient/patient.module';
+import { AvailabilityModule } from './api/availability/availability.module';
 
 @Module({
-  imports: [UserModule, AuthModule, DoctorModule, PatientModule],
+  imports: [UserModule, AuthModule, DoctorModule, PatientModule, AvailabilityModule],
   controllers: [AppController],
   providers: [AppService],
 })

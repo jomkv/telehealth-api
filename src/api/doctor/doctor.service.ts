@@ -1,11 +1,19 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OnboardDoctorDto } from './dto/onboard-doctor.dto';
-import { Prisma } from 'generated/prisma/client';
+import { Doctor, Prisma } from 'generated/prisma/client';
 
 @Injectable()
 export class DoctorService {
   constructor(private readonly prisma: PrismaService) {}
+
+  getMe(userId: string): Promise<Doctor | null> {
+    return this.prisma.doctor.findUnique({
+      where: {
+        userId,
+      },
+    });
+  }
 
   async onboard(
     userId: string,
