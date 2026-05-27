@@ -88,7 +88,7 @@ export class UserService {
     });
   }
 
-  async findOne(id: string): Promise<Omit<User, 'password'> | null> {
+  async findOne(id: string) {
     return await this.prisma.user.findUnique({
       where: {
         id,

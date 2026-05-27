@@ -7,6 +7,7 @@ import {
   UseGuards,
   Req,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { UserService } from './user.service';
@@ -18,19 +19,34 @@ import {
   UnonboardedOnly,
 } from '../auth/guards/auth.guard';
 import { User } from 'generated/prisma/client';
+import { DoctorService } from '../doctor/doctor.service';
+import { PatientService } from '../patient/patient.service';
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly doctorService: DoctorService,
+    private readonly patientService: PatientService,
+  ) {}
 
   @Get('me')
   @UseGuards(AuthGuard)
   @AllowAnyOnboarding()
-  me(@Req() req: Request) {
+  async me(@Req() req: Request) {
     if (!req.user) {
       throw new BadRequestException('Missing user context');
     }
 
-    return this.userService.findOne(req.user.id);
+    const meUser = await this.userService.findOne(req.user.id);
+
+    if (!meUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const meDoctor = await this.doctorService.getMe(req.user.id);
+    const mePatient = await this.patientService.getMe(req.user.id);
+
+    return { ...meUser, doctor: meDoctor, patient: mePatient };
   }
 
   @Post()

@@ -12,6 +12,15 @@ export class DoctorService {
       where: {
         userId,
       },
+      include: {
+        specialization: {
+          select: {
+            id: true,
+            label: true,
+            description: true,
+          },
+        },
+      },
     });
   }
 
