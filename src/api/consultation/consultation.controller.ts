@@ -5,18 +5,18 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   ValidationPipe,
   UseGuards,
   Req,
   BadRequestException,
   NotFoundException,
+  Res,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ConsultationService } from './consultation.service';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
-import { UpdateConsultationDto } from './dto/update-consultation.dto';
 import { AuthGuard, Roles } from '../auth/guards/auth.guard';
-import { Role } from 'generated/prisma/enums';
+import { ConsultationStatus, Role } from 'generated/prisma/enums';
 import { Request } from 'express';
 import { DoctorService } from '../doctor/doctor.service';
 import { Doctor } from 'generated/prisma/client';
@@ -63,19 +63,37 @@ export class ConsultationController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.consultationService.findOne(+id);
+    return this.consultationService.findById(id);
   }
 
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateConsultationDto: UpdateConsultationDto,
-  ) {
-    return this.consultationService.update(+id, updateConsultationDto);
-  }
+  @Patch(':id/cancel')
+  @UseGuards(AuthGuard)
+  async cancel(@Res() req: Request, @Param('id') id: string) {
+    if (!req.user) {
+      throw new BadRequestException('Missing user context');
+    }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.consultationService.remove(+id);
+    const consultation = await this.consultationService.findById(id);
+
+    if (!consultation) {
+      throw new NotFoundException('Consultation not found');
+    }
+
+    // If req.user is not the patient AND doctor of the consultation
+    if (
+      req.user.id !== consultation.doctor.userId &&
+      req.user.id !== consultation.patient.userId
+    ) {
+      throw new ForbiddenException('You do not have access to this resource');
+    }
+
+    if (
+      consultation.status === ConsultationStatus.CANCELLED ||
+      consultation.status === ConsultationStatus.DONE
+    ) {
+      throw new BadRequestException('Consultation already cancelled/done');
+    }
+
+    return await this.consultationService.cancel(id);
   }
 }

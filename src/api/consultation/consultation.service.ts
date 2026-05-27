@@ -5,10 +5,42 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
-import { UpdateConsultationDto } from './dto/update-consultation.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma } from 'generated/prisma/client';
 import { ConsultationStatus, DayOfWeek } from 'generated/prisma/enums';
 import { randomUUID } from 'crypto';
+
+const consultationInclude = {
+  patient: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          birthday: true,
+          profilePic: true,
+          mobileNumber: true,
+        },
+      },
+    },
+  },
+  doctor: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          birthday: true,
+          profilePic: true,
+          mobileNumber: true,
+        },
+      },
+      specialization: { select: { id: true, label: true, description: true } },
+    },
+  },
+} as const satisfies Prisma.ConsultationInclude;
 
 @Injectable()
 export class ConsultationService {
@@ -153,58 +185,26 @@ export class ConsultationService {
 
   findDoctorConsultations(doctorId: string) {
     return this.prisma.consultation.findMany({
-      where: {
-        doctorId,
-      },
-      include: {
-        patient: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                name: true,
-                birthday: true,
-                profilePic: true,
-                mobileNumber: true,
-              },
-            },
-          },
-        },
-        doctor: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                name: true,
-                birthday: true,
-                profilePic: true,
-                mobileNumber: true,
-              },
-            },
-            specialization: {
-              select: {
-                id: true,
-                label: true,
-                description: true,
-              },
-            },
-          },
-        },
-      },
+      where: { doctorId },
+      include: consultationInclude,
     });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} consultation`;
+  findById(id: string) {
+    return this.prisma.consultation.findUnique({
+      where: { id },
+      include: consultationInclude,
+    });
   }
 
-  update(id: number, updateConsultationDto: UpdateConsultationDto) {
-    return `This action updates a #${id} consultation`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} consultation`;
+  cancel(id: string) {
+    return this.prisma.consultation.update({
+      where: {
+        id,
+      },
+      data: {
+        status: ConsultationStatus.CANCELLED,
+      },
+    });
   }
 }
