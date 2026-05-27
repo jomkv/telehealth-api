@@ -65,9 +65,9 @@ export class ConsultationGuard implements CanActivate {
       ]) ?? false;
 
     if (
-      (requireNotDone &&
-        consultation.status === ConsultationStatus.CANCELLED) ||
-      consultation.status === ConsultationStatus.DONE
+      requireNotDone &&
+      (consultation.status === ConsultationStatus.CANCELLED ||
+        consultation.status === ConsultationStatus.DONE)
     ) {
       throw new BadRequestException('Consultation already cancelled/done');
     }

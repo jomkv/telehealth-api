@@ -76,7 +76,6 @@ export class ConsultationController {
   @UseGuards(AuthGuard, ConsultationGuard)
   @Roles(Role.DOCTOR)
   addDoctorNotes(
-    @Req() req: Request,
     @Param('id') id: string,
     @Body(ValidationPipe) doctorNotesDto: DoctorNotesDto,
   ) {
@@ -91,7 +90,6 @@ export class ConsultationController {
   @RequireNotDone()
   reschedule(
     @Req() req: Request,
-    @Param('id') id: string,
     @Body(ValidationPipe) rescheduleDto: RescheduleConsultationDto,
   ) {
     return this.consultationService.reschedule(req.consultation, req.user.id);
