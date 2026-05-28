@@ -1,4 +1,11 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { DoctorService } from './doctor.service';
 import {
   AllowAnyOnboarding,
@@ -6,6 +13,7 @@ import {
   Roles,
 } from '../auth/guards/auth.guard';
 import { Role } from 'generated/prisma/enums';
+import { PopulatedDoctor } from 'src/shared/@types/doctor';
 
 @Controller('doctor')
 export class DoctorController {
@@ -22,6 +30,20 @@ export class DoctorController {
   @UseGuards(AuthGuard)
   @Roles(Role.PATIENT)
   getAll(@Query('q') queryString: string) {
-    return this.doctorService.searchDoctor(queryString);
+    return this.doctorService.searchDoctors(queryString);
+  }
+
+  @Get(':id')
+  @UseGuards(AuthGuard)
+  @Roles(Role.PATIENT)
+  async getOne(@Param('id') id: string) {
+    const doctor: PopulatedDoctor | null =
+      await this.doctorService.findById(id);
+
+    if (!doctor) {
+      throw new NotFoundException('Doctor not found');
+    }
+
+    return doctor;
   }
 }

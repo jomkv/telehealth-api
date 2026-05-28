@@ -1,7 +1,20 @@
-import { Doctor, Specialization } from 'generated/prisma/client';
+import {
+  AvailabilityTemplate,
+  Doctor,
+  Specialization,
+  User,
+} from 'generated/prisma/client';
 
 type SpecializationNoEmbedding = Omit<Specialization, 'embedding'>;
 
 export type DoctorWithSpecialization = Doctor & {
   specialization: SpecializationNoEmbedding;
 };
+
+export interface PopulatedDoctor extends DoctorWithSpecialization {
+  user: Omit<User, 'password'>;
+  availability?: Pick<
+    AvailabilityTemplate,
+    'dayOfWeek' | 'startTime' | 'endTime'
+  >[];
+}
