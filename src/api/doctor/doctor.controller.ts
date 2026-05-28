@@ -1,11 +1,14 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   NotFoundException,
   Param,
   Query,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { DoctorService } from './doctor.service';
 import { ConsultationService } from '../consultation/consultation.service';
@@ -16,6 +19,7 @@ import {
 } from '../auth/guards/auth.guard';
 import { Role } from 'generated/prisma/enums';
 import { PopulatedDoctor } from 'src/shared/@types/doctor';
+import { SymptomSearchDto } from './dto/symptom-search.dto';
 
 @Controller('doctor')
 export class DoctorController {
@@ -36,6 +40,14 @@ export class DoctorController {
   @Roles(Role.PATIENT)
   getAll(@Query('q') queryString: string) {
     return this.doctorService.searchDoctors(queryString);
+  }
+
+  @Get('symptoms')
+  @UseGuards(AuthGuard)
+  @Roles(Role.PATIENT)
+  @UsePipes(new ValidationPipe({ transform: true }))
+  symptomSearch(@Query() { symptoms }: SymptomSearchDto) {
+    return this.doctorService.findDoctorsBySymptoms(symptoms);
   }
 
   @Get(':id')

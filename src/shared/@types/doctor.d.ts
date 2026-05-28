@@ -18,4 +18,5 @@ export interface PopulatedDoctor extends DoctorWithSpecialization {
     'dayOfWeek' | 'startTime' | 'endTime'
   >[];
   bookedSlots?: string[];
+  relevanceScore?: number;
 }
