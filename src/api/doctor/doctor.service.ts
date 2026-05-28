@@ -1,13 +1,14 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OnboardDoctorDto } from './dto/onboard-doctor.dto';
-import { Doctor, Prisma } from 'generated/prisma/client';
+import { Prisma } from 'generated/prisma/client';
+import { DoctorWithSpecialization } from 'src/shared/@types/doctor';
 
 @Injectable()
 export class DoctorService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findByUserId(userId: string): Promise<Doctor | null> {
+  findByUserId(userId: string): Promise<DoctorWithSpecialization | null> {
     return this.prisma.doctor.findUnique({
       where: {
         userId,
@@ -22,6 +23,41 @@ export class DoctorService {
         },
       },
     });
+  }
+
+  async searchDoctor(queryString: string) {
+    const userDoctors = await this.prisma.user.findMany({
+      where: {
+        name: {
+          search: queryString,
+        },
+        role: 'DOCTOR',
+      },
+      include: {
+        doctor: {
+          include: {
+            specialization: {
+              select: {
+                id: true,
+                label: true,
+                description: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const formattedDoctors = userDoctors.map((userDoctor) => {
+      const { doctor, password, ...user } = userDoctor;
+
+      return {
+        ...doctor,
+        user: user,
+      };
+    });
+
+    return formattedDoctors;
   }
 
   async onboard(

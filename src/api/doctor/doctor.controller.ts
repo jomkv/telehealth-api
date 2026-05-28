@@ -1,6 +1,11 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { DoctorService } from './doctor.service';
-import { AllowAnyOnboarding, AuthGuard } from '../auth/guards/auth.guard';
+import {
+  AllowAnyOnboarding,
+  AuthGuard,
+  Roles,
+} from '../auth/guards/auth.guard';
+import { Role } from 'generated/prisma/enums';
 
 @Controller('doctor')
 export class DoctorController {
@@ -11,5 +16,12 @@ export class DoctorController {
   @AllowAnyOnboarding()
   getSpecializations() {
     return this.doctorService.getAllSpecializations();
+  }
+
+  @Get()
+  @UseGuards(AuthGuard)
+  @Roles(Role.PATIENT)
+  getAll(@Query('q') queryString: string) {
+    return this.doctorService.searchDoctor(queryString);
   }
 }
