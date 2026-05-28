@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   NotFoundException,
@@ -7,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { DoctorService } from './doctor.service';
+import { ConsultationService } from '../consultation/consultation.service';
 import {
   AllowAnyOnboarding,
   AuthGuard,
@@ -17,7 +19,10 @@ import { PopulatedDoctor } from 'src/shared/@types/doctor';
 
 @Controller('doctor')
 export class DoctorController {
-  constructor(private readonly doctorService: DoctorService) {}
+  constructor(
+    private readonly doctorService: DoctorService,
+    private readonly consultationService: ConsultationService,
+  ) {}
 
   @Get('specializations')
   @UseGuards(AuthGuard)
@@ -36,14 +41,33 @@ export class DoctorController {
   @Get(':id')
   @UseGuards(AuthGuard)
   @Roles(Role.PATIENT)
-  async getOne(@Param('id') id: string) {
-    const doctor: PopulatedDoctor | null =
+  async getOne(
+    @Param('id') id: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const baseDoctor: PopulatedDoctor | null =
       await this.doctorService.findById(id);
 
-    if (!doctor) {
+    if (!baseDoctor) {
       throw new NotFoundException('Doctor not found');
     }
 
-    return doctor;
+    let bookedSlots: string[] = [];
+
+    if (!from && !to) {
+      return { ...baseDoctor, bookedSlots };
+    }
+
+    if (!from || !to) {
+      throw new BadRequestException('`from` and `to` required together');
+    }
+
+    bookedSlots = await this.consultationService.getBookedSlotsForDoctor(id, {
+      from,
+      to,
+    });
+
+    return { ...baseDoctor, bookedSlots };
   }
 }

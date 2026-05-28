@@ -11,6 +11,13 @@ import { ConsultationStatus, DayOfWeek } from 'generated/prisma/enums';
 import { randomUUID } from 'crypto';
 import { consultationInclude } from 'src/shared/constants';
 import { PopulatedConsultation } from 'src/shared/@types/consultation';
+import {
+  getNowPhtEpochMs,
+  getPhtEpochMsFromUtc,
+  getPhtPartsFromUtc,
+  parseIsoToUtcDate,
+  toUtcFromPhtParts,
+} from 'src/shared/timezone';
 
 @Injectable()
 export class ConsultationService {
@@ -66,7 +73,7 @@ export class ConsultationService {
     });
   }
 
-  private toDayOfWeek(date: Date): DayOfWeek {
+  private toDayOfWeek(dayIndex: number): DayOfWeek {
     const days: DayOfWeek[] = [
       DayOfWeek.SUN,
       DayOfWeek.MON,
@@ -77,7 +84,7 @@ export class ConsultationService {
       DayOfWeek.SAT,
     ];
 
-    return days[date.getDay()];
+    return days[dayIndex];
   }
 
   private buildMeetingLink(consultationId: string) {
@@ -98,6 +105,57 @@ export class ConsultationService {
       where: { doctorId },
       include: consultationInclude,
     });
+  }
+
+  async getBookedSlotsForDoctor(
+    doctorId: string,
+    range: { from: string; to: string },
+  ): Promise<string[]> {
+    const fromUtc = parseIsoToUtcDate(range.from);
+    const toUtc = parseIsoToUtcDate(range.to);
+
+    if (!fromUtc || !toUtc) {
+      throw new BadRequestException('Invalid from or to');
+    }
+
+    if (fromUtc.getTime() >= toUtc.getTime()) {
+      throw new BadRequestException('from must be before to');
+    }
+
+    const consultations = await this.prisma.consultation.findMany({
+      where: {
+        doctorId,
+        scheduledAt: {
+          gte: fromUtc,
+          lt: toUtc,
+        },
+        status: {
+          in: [ConsultationStatus.PENDING, ConsultationStatus.ONGOING],
+        },
+      },
+      select: { scheduledAt: true },
+    });
+
+    const booked: string[] = Array.from(
+      new Set(
+        consultations.map(({ scheduledAt }) => {
+          const phtParts = getPhtPartsFromUtc(scheduledAt);
+          const slotUtc = toUtcFromPhtParts({
+            year: phtParts.year,
+            month: phtParts.month,
+            day: phtParts.day,
+            hour: phtParts.hour,
+            minute: 0,
+            second: 0,
+            millisecond: 0,
+          });
+
+          return slotUtc.toISOString();
+        }),
+      ),
+    ).sort();
+
+    return booked;
   }
 
   findById(id: string): Promise<PopulatedConsultation | null> {
@@ -154,24 +212,37 @@ export class ConsultationService {
     const { doctorId, patientId, scheduledAtInput, excludeConsultationId } =
       params;
 
-    const scheduledAt = new Date(scheduledAtInput);
+    const parsedUtc = parseIsoToUtcDate(scheduledAtInput);
 
-    if (Number.isNaN(scheduledAt.getTime())) {
+    if (!parsedUtc) {
       throw new BadRequestException('Invalid scheduledAt');
     }
 
-    if (scheduledAt.getTime() <= Date.now()) {
+    const phtParts = getPhtPartsFromUtc(parsedUtc);
+    const phtMs = getPhtEpochMsFromUtc(parsedUtc);
+    const nowPhtMs = getNowPhtEpochMs();
+
+    if (phtMs <= nowPhtMs) {
       throw new BadRequestException('scheduledAt must be in the future');
     }
 
     if (
-      scheduledAt.getMinutes() !== 0 ||
-      scheduledAt.getSeconds() !== 0 ||
-      scheduledAt.getMilliseconds() !== 0
+      phtParts.minute !== 0 ||
+      phtParts.second !== 0 ||
+      phtParts.millisecond !== 0
     ) {
       throw new BadRequestException('scheduledAt must be on the hour');
     }
 
+    const scheduledAt = toUtcFromPhtParts({
+      year: phtParts.year,
+      month: phtParts.month,
+      day: phtParts.day,
+      hour: phtParts.hour,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    });
     const slotEnd = new Date(scheduledAt.getTime() + 60 * 60 * 1000);
     const conflictBase: Prisma.ConsultationWhereInput = {
       scheduledAt: {
@@ -213,8 +284,8 @@ export class ConsultationService {
       throw new ConflictException('Patient already booked for this slot');
     }
 
-    const dayOfWeek = this.toDayOfWeek(scheduledAt);
-    const hour = scheduledAt.getHours();
+    const dayOfWeek = this.toDayOfWeek(phtParts.dayOfWeekIndex);
+    const hour = phtParts.hour;
     const timeSlot = `${String(hour).padStart(2, '0')}:00`;
 
     const availability = await this.prisma.availabilityTemplate.findFirst({

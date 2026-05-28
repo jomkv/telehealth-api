@@ -17,4 +17,5 @@ export interface PopulatedDoctor extends DoctorWithSpecialization {
     AvailabilityTemplate,
     'dayOfWeek' | 'startTime' | 'endTime'
   >[];
+  bookedSlots?: string[];
 }

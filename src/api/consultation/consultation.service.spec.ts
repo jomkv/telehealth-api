@@ -18,6 +18,7 @@ const mockPrisma = {
   },
   consultation: {
     findFirst: jest.fn(),
+    findMany: jest.fn(),
     create: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
@@ -352,6 +353,33 @@ describe('ConsultationService', () => {
         scheduledAt: new Date('2026-05-27T12:00:00.000Z'),
         rescheduledFrom: new Date('2026-05-27T11:00:00.000Z'),
       },
+    });
+  });
+
+  it('returns booked slots for doctor in range', async () => {
+    mockPrisma.consultation.findMany.mockResolvedValue([
+      { scheduledAt: new Date('2026-06-01T09:00:00.000Z') },
+      { scheduledAt: new Date('2026-06-01T09:00:00.000Z') },
+    ]);
+
+    const booked = await service.getBookedSlotsForDoctor('doctor-1', {
+      from: '2026-06-01T00:00:00.000Z',
+      to: '2026-06-08T00:00:00.000Z',
+    });
+
+    expect(booked).toEqual(['2026-06-01T09:00:00.000Z']);
+    expect(mockPrisma.consultation.findMany).toHaveBeenCalledWith({
+      where: {
+        doctorId: 'doctor-1',
+        scheduledAt: {
+          gte: new Date('2026-06-01T00:00:00.000Z'),
+          lt: new Date('2026-06-08T00:00:00.000Z'),
+        },
+        status: {
+          in: ['PENDING', 'ONGOING'],
+        },
+      },
+      select: { scheduledAt: true },
     });
   });
 });
