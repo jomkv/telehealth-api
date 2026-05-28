@@ -69,7 +69,6 @@ export class ConsultationController {
 
   @Get(':id')
   @UseGuards(AuthGuard, ConsultationGuard)
-  @Roles(Role.DOCTOR)
   findOne(@Req() req: Request) {
     return req.consultation;
   }
