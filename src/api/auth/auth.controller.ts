@@ -14,6 +14,7 @@ import { LoginDto } from './dto/login.dto';
 import { UserService } from '../user/user.service';
 import { Response } from 'express';
 import { ENV_VARS } from 'src/shared/env-variables';
+import { MeUser } from 'src/shared/@types/user';
 
 @Controller('auth')
 export class AuthController {
@@ -27,7 +28,7 @@ export class AuthController {
   async login(
     @Body(ValidationPipe) loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<MeUser> {
     const user = await this.userService.findUserByEmail(loginDto.email);
 
     // Note: might want to use more vague error messages, instead of specifying what input was wrong.
@@ -57,7 +58,7 @@ export class AuthController {
     // Explicitly exclude password from response payload
     const { password, ...userPayload } = user;
 
-    return userPayload;
+    return this.userService.findMe(userPayload);
   }
 
   @Post('logout')

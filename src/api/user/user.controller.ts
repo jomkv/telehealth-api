@@ -19,20 +19,16 @@ import {
   UnonboardedOnly,
 } from '../auth/guards/auth.guard';
 import { User } from 'generated/prisma/client';
-import { DoctorService } from '../doctor/doctor.service';
-import { PatientService } from '../patient/patient.service';
+import { MeUser } from 'src/shared/@types/user';
+
 @Controller('user')
 export class UserController {
-  constructor(
-    private readonly userService: UserService,
-    private readonly doctorService: DoctorService,
-    private readonly patientService: PatientService,
-  ) {}
+  constructor(private readonly userService: UserService) {}
 
   @Get('me')
   @UseGuards(AuthGuard)
   @AllowAnyOnboarding()
-  async me(@Req() req: Request) {
+  async me(@Req() req: Request): Promise<MeUser> {
     if (!req.user) {
       throw new BadRequestException('Missing user context');
     }
@@ -43,10 +39,7 @@ export class UserController {
       throw new NotFoundException('User not found');
     }
 
-    const meDoctor = await this.doctorService.findByUserId(req.user.id);
-    const mePatient = await this.patientService.findByUserId(req.user.id);
-
-    return { ...meUser, doctor: meDoctor, patient: mePatient };
+    return this.userService.findMe(meUser);
   }
 
   @Post()
@@ -68,7 +61,7 @@ export class UserController {
   onboard(
     @Req() req: Request,
     @Body(ValidationPipe) onboardUserDto: OnboardUserDto,
-  ) {
+  ): Promise<MeUser> {
     if (!req.user) {
       throw new BadRequestException('Missing user context');
     }

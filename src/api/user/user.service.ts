@@ -6,7 +6,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { OnboardUserDto } from './dto/onboard-user.dto';
 import { PatientService } from '../patient/patient.service';
 import { DoctorService } from '../doctor/doctor.service';
-import { UserPayload } from 'src/shared/@types/user';
+import { MeUser, UserPayload } from 'src/shared/@types/user';
 
 @Injectable()
 export class UserService {
@@ -49,8 +49,11 @@ export class UserService {
     });
   }
 
-  async onboard(user: UserPayload, onboardUserDto: OnboardUserDto) {
-    await this.prisma.$transaction(async (tx) => {
+  async onboard(
+    user: UserPayload,
+    onboardUserDto: OnboardUserDto,
+  ): Promise<MeUser> {
+    const updatedUser = await this.prisma.$transaction(async (tx) => {
       if (user.role === Role.PATIENT) {
         if (!onboardUserDto.patient) {
           throw new BadRequestException('Patient onboarding data required');
@@ -67,13 +70,9 @@ export class UserService {
         await this.doctorService.onboard(user.id, onboardUserDto.doctor, tx);
       }
 
-      await tx.user.update({
+      return await tx.user.update({
         where: { id: user.id },
         data: { isOnboarded: true },
-      });
-
-      return tx.user.findUnique({
-        where: { id: user.id },
         select: {
           id: true,
           name: true,
@@ -83,9 +82,12 @@ export class UserService {
           mobileNumber: true,
           isOnboarded: true,
           createdAt: true,
+          profilePic: true,
         },
       });
     });
+
+    return this.findMe(updatedUser);
   }
 
   async findOne(id: string) {
@@ -105,6 +107,13 @@ export class UserService {
         profilePic: true,
       },
     });
+  }
+
+  async findMe(user: Omit<User, 'password'>): Promise<MeUser> {
+    const doctor = await this.doctorService.findByUserId(user.id);
+    const patient = await this.patientService.findByUserId(user.id);
+
+    return { ...user, doctor, patient };
   }
 
   async findUserByEmail(email: string): Promise<User | null> {
