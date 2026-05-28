@@ -68,8 +68,10 @@ export class ConsultationController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.consultationService.findById(id);
+  @UseGuards(AuthGuard, ConsultationGuard)
+  @Roles(Role.DOCTOR)
+  findOne(@Req() req: Request) {
+    return req.consultation;
   }
 
   @Patch(':id/doctor-notes')
