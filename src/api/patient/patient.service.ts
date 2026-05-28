@@ -2,12 +2,13 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OnboardPatientDto } from './dto/onboard-patient.dto';
 import { Patient, Prisma } from 'generated/prisma/client';
+import { PopulatedPatient } from 'src/shared/@types/patient';
 
 @Injectable()
 export class PatientService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findById(patientId: string) {
+  findById(patientId: string): Promise<PopulatedPatient | null> {
     return this.prisma.patient.findUnique({
       where: { id: patientId },
       include: {
@@ -21,6 +22,7 @@ export class PatientService {
             mobileNumber: true,
             isOnboarded: true,
             createdAt: true,
+            profilePic: true,
           },
         },
       },
