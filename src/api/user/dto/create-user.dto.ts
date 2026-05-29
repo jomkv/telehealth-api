@@ -1,16 +1,17 @@
 import {
-  IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
   IsNotEmpty,
-  IsOptional,
   IsString,
+  MaxLength,
+  MinLength,
 } from 'class-validator';
 import { Role } from 'generated/prisma/client';
 
 export class CreateUserDto {
   @IsString()
+  @MaxLength(100)
   @IsNotEmpty()
   name: string;
 
@@ -19,6 +20,7 @@ export class CreateUserDto {
   email: string;
 
   @IsString()
+  @MinLength(6)
   @IsNotEmpty()
   password: string;
 
@@ -29,6 +31,8 @@ export class CreateUserDto {
   birthday: string;
 
   @IsString()
+  @MinLength(10)
+  @MaxLength(10)
   @IsNotEmpty()
   mobileNumber: string;
 }
