@@ -48,10 +48,11 @@ export class AuthController {
 
     const accessToken = await this.authService.generateAccessToken(user);
 
+    const isProd = ENV_VARS.isProd();
     res.cookie('access_token', accessToken, {
       httpOnly: true,
-      secure: ENV_VARS.isProd(),
-      sameSite: 'strict',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -63,12 +64,12 @@ export class AuthController {
 
   @Post('logout')
   logout(@Res({ passthrough: true }) res: Response) {
+    const isProd = ENV_VARS.isProd();
     res.clearCookie('access_token', {
       httpOnly: true,
-      secure: ENV_VARS.isProd(),
-      sameSite: 'strict',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
     });
-
     return;
   }
 }
