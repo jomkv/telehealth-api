@@ -9,13 +9,14 @@ import {
   UseGuards,
   Req,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConsultationService } from './consultation.service';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
 import { DoctorNotesDto } from './dto/doctor-notes.dto';
 import { RescheduleConsultationDto } from './dto/reschedule-consultation.dto';
 import { AuthGuard, Roles } from '../auth/guards/auth.guard';
-import { Role } from 'generated/prisma/enums';
+import { ConsultationStatus, Role } from 'generated/prisma/enums';
 import { Request } from 'express';
 import { DoctorService } from '../doctor/doctor.service';
 import { Doctor, Patient } from 'generated/prisma/client';
@@ -93,7 +94,16 @@ export class ConsultationController {
     @Req() req: Request,
     @Body(ValidationPipe) rescheduleDto: RescheduleConsultationDto,
   ) {
-    return this.consultationService.reschedule(req.consultation, req.user.id);
+    if (req.consultation.status !== ConsultationStatus.PENDING) {
+      throw new BadRequestException(
+        'Only pending consultations can be rescheduled',
+      );
+    }
+
+    return this.consultationService.reschedule(
+      req.consultation,
+      rescheduleDto.scheduledAt,
+    );
   }
 
   @Patch(':id/cancel')
