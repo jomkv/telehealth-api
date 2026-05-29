@@ -4,6 +4,8 @@ import { User, Role } from 'generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { OnboardUserDto } from './dto/onboard-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { uploadProfilePic } from 'src/shared/cloudinary';
 import { PatientService } from '../patient/patient.service';
 import { DoctorService } from '../doctor/doctor.service';
 import { MeUser, UserPayload } from 'src/shared/@types/user';
@@ -122,5 +124,55 @@ export class UserService {
         email,
       },
     });
+  }
+
+  async updateMe(
+    user: UserPayload,
+    update: UpdateUserDto,
+    file?: Express.Multer.File,
+  ): Promise<MeUser> {
+    const data: any = {};
+
+    if (update.name) data.name = update.name;
+
+    if (update.password) {
+      data.password = await hash(update.password, 10);
+    }
+
+    if (update.birthday) {
+      const birthdayDate = new Date(update.birthday);
+      if (Number.isNaN(birthdayDate.getTime())) {
+        throw new BadRequestException(
+          'Invalid birthday date. Expected format YYYY-MM-DD.',
+        );
+      }
+
+      data.birthday = birthdayDate;
+    }
+
+    if (update.mobileNumber) data.mobileNumber = update.mobileNumber;
+
+    if (file && file.buffer) {
+      const secureUrl = await uploadProfilePic(file.buffer);
+      data.profilePic = secureUrl;
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        birthday: true,
+        mobileNumber: true,
+        isOnboarded: true,
+        createdAt: true,
+        profilePic: true,
+      },
+    });
+
+    return this.findMe(updated);
   }
 }

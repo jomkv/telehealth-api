@@ -8,4 +8,7 @@ export const ENV_VARS = {
   clientUrl: () => process.env.CLIENT_URL,
   dbUrl: () => process.env.DATABASE_URL,
   hfKey: () => process.env.HF_KEY,
+  cloudinaryCloudName: () => process.env.CLOUDINARY_CLOUD_NAME,
+  cloudinaryApiKey: () => process.env.CLOUDINARY_API_KEY,
+  cloudinaryApiSecret: () => process.env.CLOUDINARY_API_SECRET,
 };

@@ -2,12 +2,18 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   ValidationPipe,
   UseGuards,
   Req,
   BadRequestException,
   NotFoundException,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  FileTypeValidator,
+  MaxFileSizeValidator,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { UserService } from './user.service';
@@ -18,6 +24,9 @@ import {
   AuthGuard,
   UnonboardedOnly,
 } from '../auth/guards/auth.guard';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as multer from 'multer';
 import { User } from 'generated/prisma/client';
 import { MeUser } from 'src/shared/@types/user';
 
@@ -67,5 +76,30 @@ export class UserController {
     }
 
     return this.userService.onboard(req.user, onboardUserDto);
+  }
+
+  @Patch('me')
+  @UseGuards(AuthGuard)
+  @UseInterceptors(
+    FileInterceptor('profilePic', { storage: multer.memoryStorage() }),
+  )
+  async updateMe(
+    @Req() req: Request,
+    @Body(ValidationPipe) updateUserDto: UpdateUserDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        fileIsRequired: false,
+        validators: [
+          new FileTypeValidator({ fileType: 'image/*' }),
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+        ],
+      }),
+    )
+    file?: Express.Multer.File,
+  ): Promise<MeUser> {
+    if (!req.user) {
+      throw new BadRequestException('Missing user context');
+    }
+    return this.userService.updateMe(req.user, updateUserDto, file);
   }
 }
