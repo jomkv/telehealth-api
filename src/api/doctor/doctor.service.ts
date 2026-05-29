@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OnboardDoctorDto } from './dto/onboard-doctor.dto';
 import { Prisma } from 'generated/prisma/client';
@@ -8,6 +12,8 @@ import {
 } from 'src/shared/@types/doctor';
 import { ENV_VARS } from 'src/shared/env-variables';
 import { InferenceClient } from '@huggingface/inference';
+import { UpdateDoctorDto } from './dto/update-doctor.dto';
+import { MeUser } from 'src/shared/@types/user';
 
 @Injectable()
 export class DoctorService {
@@ -122,6 +128,52 @@ export class DoctorService {
         yearsOfPractice: dto.yearsOfPractice,
       },
     });
+  }
+
+  async updateByUserId(userId: string, dto: UpdateDoctorDto): Promise<MeUser> {
+    const existing = await this.prisma.doctor.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Doctor not found');
+    }
+
+    const updatedDoctor = await this.prisma.doctor.update({
+      where: { id: existing.id },
+      data: {
+        specializationId: dto.specializationId,
+        bio: dto.bio ?? null,
+        yearsOfPractice: dto.yearsOfPractice ?? null,
+      },
+      include: {
+        specialization: {
+          select: {
+            id: true,
+            label: true,
+            description: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            birthday: true,
+            mobileNumber: true,
+            isOnboarded: true,
+            createdAt: true,
+            profilePic: true,
+          },
+        },
+      },
+    });
+
+    const { user, ...doctor } = updatedDoctor;
+
+    return { ...user, doctor };
   }
 
   getAllSpecializations(includeEmbedding: boolean = false) {

@@ -1,14 +1,3 @@
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import { UpdateDoctorDto } from './update-doctor.dto';
 
-export class OnboardDoctorDto {
-  @IsString()
-  specializationId: string;
-
-  @IsOptional()
-  @IsString()
-  bio?: string;
-
-  @IsOptional()
-  @IsInt()
-  yearsOfPractice?: number;
-}
+export class OnboardDoctorDto extends UpdateDoctorDto {}

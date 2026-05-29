@@ -6,10 +6,13 @@ import {
   NotFoundException,
   Param,
   Query,
+  Patch,
+  Req,
   UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { DoctorService } from './doctor.service';
 import { ConsultationService } from '../consultation/consultation.service';
 import {
@@ -20,6 +23,8 @@ import {
 import { Role } from 'generated/prisma/enums';
 import { PopulatedDoctor } from 'src/shared/@types/doctor';
 import { SymptomSearchDto } from './dto/symptom-search.dto';
+import { UpdateDoctorDto } from './dto/update-doctor.dto';
+import { MeUser } from 'src/shared/@types/user';
 
 @Controller('doctor')
 export class DoctorController {
@@ -27,6 +32,20 @@ export class DoctorController {
     private readonly doctorService: DoctorService,
     private readonly consultationService: ConsultationService,
   ) {}
+
+  @Patch('me')
+  @UseGuards(AuthGuard)
+  @Roles(Role.DOCTOR)
+  updateMe(
+    @Req() req: Request,
+    @Body(ValidationPipe) updateDoctorDto: UpdateDoctorDto,
+  ): Promise<MeUser> {
+    if (!req.user) {
+      throw new BadRequestException('Missing user context');
+    }
+
+    return this.doctorService.updateByUserId(req.user.id, updateDoctorDto);
+  }
 
   @Get('specializations')
   @UseGuards(AuthGuard)

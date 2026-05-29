@@ -1,28 +1,3 @@
-import { IsArray, IsNumber, IsOptional, IsString } from 'class-validator';
+import { UpdatePatientDto } from './update-patient.dto';
 
-export class OnboardPatientDto {
-  @IsNumber()
-  weight: number;
-
-  @IsNumber()
-  height: number;
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  conditions?: string[];
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  allergies?: string[];
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  medications?: string[];
-
-  @IsOptional()
-  @IsString()
-  notes?: string;
-}
+export class OnboardPatientDto extends UpdatePatientDto {}
