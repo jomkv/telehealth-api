@@ -4,9 +4,12 @@ import { ResponseInterceptor } from './shared/interceptors/response.interceptor'
 import { AllExceptionFilter } from './shared/filters/exception.filter';
 import * as cookieParser from 'cookie-parser';
 import { ENV_VARS } from './shared/env-variables';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.set('trust proxy', 1);
 
   app.use(cookieParser());
   app.enableCors({
