@@ -1,73 +1,305 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+# Medra
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+A telehealth web app for patients and doctors to connect easily. Built for WC Launchpad Builder round.
 
-## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Authors
 
-## Installation
+- [Jom Karlo Verzosa](https://www.github.com/jomkv)
 
-```bash
-$ pnpm install
+
+## Tech Stack
+
+**Framework:** NestJS
+
+**Database:** PrismaORM + PostgreSQL
+
+**Others:** HF Inference API, Cloudinary SDK, socket.io, JWT
+
+
+
+## Deployment
+
+- Server is deployed on Render free tier.
+- DB is deployed on DigitalOcean.
+
+
+
+## API Reference
+
+> All endpoints are prefixed with `/api`
+
+---
+
+## Auth
+
+#### Login
+
+```http
+POST /api/auth/login
 ```
 
-## Running the app
+| Body Field | Type | Description |
+| :--------- | :--- | :---------- |
+| `email` | `string` | **Required.** User's email |
+| `password` | `string` | **Required.** User's password |
 
-```bash
-# development
-$ pnpm run start
+Sets an `access_token` HTTP-only cookie. Returns the authenticated user (`MeUser`).
 
-# watch mode
-$ pnpm run start:dev
+#### Logout
 
-# production mode
-$ pnpm run start:prod
+```http
+POST /api/auth/logout
 ```
 
-## Test
+Clears the `access_token` cookie.
 
-```bash
-# unit tests
-$ pnpm run test
+---
 
-# e2e tests
-$ pnpm run test:e2e
+## User
 
-# test coverage
-$ pnpm run test:cov
+#### Get current user
+
+```http
+GET /api/user/me
 ```
 
-## Support
+Returns the authenticated user's profile (`MeUser`). Accessible regardless of onboarding status.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+#### Create user
 
-## Stay in touch
+```http
+POST /api/user
+```
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+| Body Field | Type | Description |
+| :--------- | :--- | :---------- |
+| `email` | `string` | **Required.** Must be unique |
+| `password` | `string` | **Required.** |
+| *(other fields)* | | Per `CreateUserDto` |
 
-## License
+#### Onboard user
 
-Nest is [MIT licensed](LICENSE).
+```http
+POST /api/user/onboard
+```
+
+Only accessible to unonboarded users. Body follows `OnboardUserDto`. Returns `MeUser`.
+
+#### Update current user
+
+```http
+PATCH /api/user/me
+```
+
+Accepts `multipart/form-data`. Supports an optional `profilePic` image upload (max 5 MB). Body fields follow `UpdateUserDto`. Returns `MeUser`.
+
+---
+
+## Doctor
+
+#### Get all doctors / search
+
+```http
+GET /api/doctor
+```
+
+Accessible by patients only.
+
+| Query Param | Type | Description |
+| :---------- | :--- | :---------- |
+| `q` | `string` | Optional search string |
+
+#### Search doctors by symptoms
+
+```http
+GET /api/doctor/symptoms
+```
+
+Accessible by patients only.
+
+| Query Param | Type | Description |
+| :---------- | :--- | :---------- |
+| `symptoms` | `string[]` | **Required.** List of symptoms |
+
+#### Get all specializations
+
+```http
+GET /api/doctor/specializations
+```
+
+Accessible at any onboarding stage.
+
+#### Get doctor by ID
+
+```http
+GET /api/doctor/:id
+```
+
+Accessible by patients only. Optionally returns booked slots for a date range.
+
+| Param | Type | Description |
+| :---- | :--- | :---------- |
+| `id` | `string` | **Required.** Doctor ID |
+
+| Query Param | Type | Description |
+| :---------- | :--- | :---------- |
+| `from` | `string` | Start of date range (required if `to` is provided) |
+| `to` | `string` | End of date range (required if `from` is provided) |
+
+#### Update doctor profile
+
+```http
+PATCH /api/doctor/me
+```
+
+Accessible by doctors only. Body follows `UpdateDoctorDto`. Returns `MeUser`.
+
+---
+
+## Patient
+
+#### Update patient profile
+
+```http
+PATCH /api/patient/me
+```
+
+Accessible by patients only. Body follows `UpdatePatientDto`. Returns `MeUser`.
+
+#### Get patient by ID
+
+```http
+GET /api/patient/:id
+```
+
+Accessible by doctors only.
+
+| Param | Type | Description |
+| :---- | :--- | :---------- |
+| `id` | `string` | **Required.** Patient ID |
+
+---
+
+## Consultation
+
+#### Create consultation
+
+```http
+POST /api/consultation
+```
+
+Accessible by patients only. Body follows `CreateConsultationDto`.
+
+#### Get all consultations
+
+```http
+GET /api/consultation
+```
+
+Returns consultations for the authenticated user. Doctors get their own consultations; patients get theirs.
+
+#### Get consultation by ID
+
+```http
+GET /api/consultation/:id
+```
+
+| Param | Type | Description |
+| :---- | :--- | :---------- |
+| `id` | `string` | **Required.** Consultation ID |
+
+#### Add doctor notes
+
+```http
+PATCH /api/consultation/:id/doctor-notes
+```
+
+Accessible by doctors only.
+
+| Param | Type | Description |
+| :---- | :--- | :---------- |
+| `id` | `string` | **Required.** Consultation ID |
+
+| Body Field | Type | Description |
+| :--------- | :--- | :---------- |
+| `doctorNotes` | `string` | **Required.** Notes to add |
+
+#### Reschedule consultation
+
+```http
+PATCH /api/consultation/:id/reschedule
+```
+
+Only allowed when consultation status is `PENDING` and not `DONE`.
+
+| Param | Type | Description |
+| :---- | :--- | :---------- |
+| `id` | `string` | **Required.** Consultation ID |
+
+| Body Field | Type | Description |
+| :--------- | :--- | :---------- |
+| `scheduledAt` | `string` | **Required.** New datetime (ISO 8601) |
+
+#### Cancel consultation
+
+```http
+PATCH /api/consultation/:id/cancel
+```
+
+Not allowed when consultation is `DONE`.
+
+| Param | Type | Description |
+| :---- | :--- | :---------- |
+| `id` | `string` | **Required.** Consultation ID |
+
+---
+
+## Availability
+
+#### Get availability by doctor
+
+```http
+GET /api/availability/:doctorId
+```
+
+| Param | Type | Description |
+| :---- | :--- | :---------- |
+| `doctorId` | `string` | **Required.** Doctor ID |
+
+#### Upsert availability template
+
+```http
+PUT /api/availability
+```
+
+Accessible by doctors only. Body follows `UpsertAvailabilityDto`. Creates or updates the authenticated doctor's availability template.
+
+---
+
+## Notification
+
+#### Get latest notification
+
+```http
+GET /api/notification/latest
+```
+
+Returns the most recent notification for the authenticated user.
+
+#### Get all notifications
+
+```http
+GET /api/notification
+```
+
+Returns all notifications for the authenticated user.
+
+#### Mark all notifications as read
+
+```http
+POST /api/notification/mark-all-read
+```
+
+Returns `{ updated: number }` — the count of notifications marked as read.
