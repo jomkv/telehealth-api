@@ -21,6 +21,8 @@ RUN pnpx prisma generate
 # Build NestJS
 RUN pnpm run build
 
+RUN node_modules/.bin/tsc prisma.config.ts --outDir . --module commonjs --esModuleInterop true --skipLibCheck true
+
 # ─── Stage 2: Production ─────────────────────────────────────────────────────
 FROM node:20-alpine AS production
 
@@ -32,6 +34,7 @@ COPY package.json pnpm-lock.yaml ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/generated ./generated
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma.config.js ./prisma.config.js
 
 COPY prisma ./prisma
 
