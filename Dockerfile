@@ -24,26 +24,17 @@ RUN pnpm run build
 # ─── Stage 2: Production ─────────────────────────────────────────────────────
 FROM node:20-alpine AS production
 
-RUN npm install -g pnpm
-
 WORKDIR /app
 
-# Copy dependency manifests
 COPY package.json pnpm-lock.yaml ./
 
-# Install production deps only
-RUN pnpm install --frozen-lockfile --prod
-
-# Copy generated Prisma client from builder
+# Copy everything from builder instead of reinstalling
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/generated ./generated
-
-# Copy compiled output from builder
 COPY --from=builder /app/dist ./dist
 
-# Copy prisma schema (needed for migrations at runtime)
 COPY prisma ./prisma
 
 EXPOSE 4040
 
-# Run migrations then start
 CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main"]
