@@ -46,4 +46,4 @@ COPY prisma ./prisma
 EXPOSE 4040
 
 # Run migrations then start
-CMD ["sh", "-c", "pnpm prisma migrate deploy && node dist/main"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main"]
