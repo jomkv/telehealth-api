@@ -12,7 +12,7 @@ import { Request } from 'express';
 import { Role } from 'generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserPayload } from 'src/shared/@types/user';
-import { ENV_VARS } from 'src/shared/env-variables';
+import { verifyAccessToken } from 'src/shared/auth-utils';
 
 export const ROLES_KEY = 'roles';
 export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
@@ -48,9 +48,7 @@ export class AuthGuard implements CanActivate {
     let payload: { id?: string };
 
     try {
-      payload = await this.jwtService.verifyAsync(token, {
-        secret: ENV_VARS.jwtSecret(),
-      });
+      payload = await verifyAccessToken(this.jwtService, token);
     } catch {
       throw new UnauthorizedException('Invalid access token');
     }
