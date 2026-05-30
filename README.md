@@ -1,30 +1,117 @@
+# Medra API
 
-# Medra
+Backend for Medra — a telehealth platform connecting patients with doctors for virtual consultations. Built for the WC Launchpad Builder round.
 
-A telehealth web app for patients and doctors to connect easily. Built for WC Launchpad Builder round.
+## Author
 
+[Jom Karlo Verzosa](https://github.com/jomkv)
 
-## Authors
-
-- [Jom Karlo Verzosa](https://www.github.com/jomkv)
-
+---
 
 ## Tech Stack
 
-**Framework:** NestJS
+- **Framework:** NestJS
+- **Database:** Prisma ORM + PostgreSQL (DigitalOcean, pgBouncer pooling)
+- **Auth:** JWT (HTTP-only cookie)
+- **AI:** Hugging Face Inference API (symptom-to-specialist matching)
+- **File Uploads:** Cloudinary SDK + Multer
+- **Real-time:** Socket.IO
+- **Scheduling:** @nestjs/schedule
+- **Rate Limiting:** @nestjs/throttler
 
-**Database:** PrismaORM + PostgreSQL
+---
 
-**Others:** HF Inference API, Cloudinary SDK, socket.io, JWT
+## Getting Started
 
+### Prerequisites
 
+- Node.js 18+
+- PostgreSQL database
+- Cloudinary account
+- Hugging Face API key
+
+### Installation
+
+```bash
+git clone <repo-url>
+cd telehealth-api
+npm install
+```
+
+### Environment Variables
+
+Create a `.env` file in the root. See [Environment Variables](#environment-variables) below for all required fields.
+
+### Database Setup
+
+```bash
+# Run migrations
+npx prisma migrate deploy
+
+# Seed the database
+npm run seed
+```
+
+### Running the Server
+
+```bash
+# Development (watch mode)
+npm run start:dev
+
+# Production
+npm run build
+npm run start:prod
+```
+
+---
+
+## Environment Variables
+
+```dotenv
+NODE_ENV="development"          # or "production"
+JWT_SECRET=[your-jwt-secret]
+ENCRYPTION_SECRET=[your-encryption-secret]
+HF_KEY=[your-huggingface-api-key]
+
+BASE_URL=[url-this-api-is-running-on]   # e.g. http://localhost:3001
+CLIENT_URL=[frontend-url]               # e.g. http://localhost:3000
+PROD_DOMAIN=".yourdomain.com"           # used for cookie domain in production
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=[your-cloud-name]
+CLOUDINARY_API_KEY=[your-api-key]
+CLOUDINARY_API_SECRET=[your-api-secret]
+
+# PostgreSQL — DigitalOcean (1GB RAM, 1vCPU, 10GB Disk, 22 connection pool)
+DIRECT_URL=[direct-postgres-connection-url]       # straight connection, used by Prisma migrations
+DATABASE_URL=[pgbouncer-pooler-connection-url]    # pooled connection, used at runtime
+```
+
+---
+
+## Scripts
+
+| Command               | Description                       |
+| --------------------- | --------------------------------- |
+| `npm run start:dev`   | Start with watch mode             |
+| `npm run start:debug` | Start with debugger               |
+| `npm run start:prod`  | Start compiled production build   |
+| `npm run build`       | Compile to `dist/`                |
+| `npm run seed`        | Seed the database                 |
+| `npm run format`      | Format source files with Prettier |
+| `npm run lint`        | Lint and auto-fix with ESLint     |
+| `npm run test`        | Run unit tests                    |
+| `npm run test:cov`    | Run tests with coverage report    |
+| `npm run test:e2e`    | Run end-to-end tests              |
+
+---
 
 ## Deployment
 
-- Server is deployed on Render free tier.
-- DB is deployed on DigitalOcean.
+- **Server:** Render (free tier)
+- **Database:** DigitalOcean Managed PostgreSQL
 
-
+---
 
 ## API Reference
 
@@ -32,7 +119,7 @@ A telehealth web app for patients and doctors to connect easily. Built for WC La
 
 ---
 
-## Auth
+### Auth
 
 #### Login
 
@@ -40,9 +127,9 @@ A telehealth web app for patients and doctors to connect easily. Built for WC La
 POST /api/auth/login
 ```
 
-| Body Field | Type | Description |
-| :--------- | :--- | :---------- |
-| `email` | `string` | **Required.** User's email |
+| Body Field | Type     | Description                   |
+| :--------- | :------- | :---------------------------- |
+| `email`    | `string` | **Required.** User's email    |
 | `password` | `string` | **Required.** User's password |
 
 Sets an `access_token` HTTP-only cookie. Returns the authenticated user (`MeUser`).
@@ -57,7 +144,7 @@ Clears the `access_token` cookie.
 
 ---
 
-## User
+### User
 
 #### Get current user
 
@@ -73,11 +160,11 @@ Returns the authenticated user's profile (`MeUser`). Accessible regardless of on
 POST /api/user
 ```
 
-| Body Field | Type | Description |
-| :--------- | :--- | :---------- |
-| `email` | `string` | **Required.** Must be unique |
-| `password` | `string` | **Required.** |
-| *(other fields)* | | Per `CreateUserDto` |
+| Body Field       | Type     | Description                  |
+| :--------------- | :------- | :--------------------------- |
+| `email`          | `string` | **Required.** Must be unique |
+| `password`       | `string` | **Required.**                |
+| _(other fields)_ |          | Per `CreateUserDto`          |
 
 #### Onboard user
 
@@ -97,7 +184,7 @@ Accepts `multipart/form-data`. Supports an optional `profilePic` image upload (m
 
 ---
 
-## Doctor
+### Doctor
 
 #### Get all doctors / search
 
@@ -107,9 +194,9 @@ GET /api/doctor
 
 Accessible by patients only.
 
-| Query Param | Type | Description |
-| :---------- | :--- | :---------- |
-| `q` | `string` | Optional search string |
+| Query Param | Type     | Description            |
+| :---------- | :------- | :--------------------- |
+| `q`         | `string` | Optional search string |
 
 #### Search doctors by symptoms
 
@@ -119,9 +206,9 @@ GET /api/doctor/symptoms
 
 Accessible by patients only.
 
-| Query Param | Type | Description |
-| :---------- | :--- | :---------- |
-| `symptoms` | `string[]` | **Required.** List of symptoms |
+| Query Param | Type       | Description                    |
+| :---------- | :--------- | :----------------------------- |
+| `symptoms`  | `string[]` | **Required.** List of symptoms |
 
 #### Get all specializations
 
@@ -139,14 +226,14 @@ GET /api/doctor/:id
 
 Accessible by patients only. Optionally returns booked slots for a date range.
 
-| Param | Type | Description |
-| :---- | :--- | :---------- |
-| `id` | `string` | **Required.** Doctor ID |
+| Param | Type     | Description             |
+| :---- | :------- | :---------------------- |
+| `id`  | `string` | **Required.** Doctor ID |
 
-| Query Param | Type | Description |
-| :---------- | :--- | :---------- |
-| `from` | `string` | Start of date range (required if `to` is provided) |
-| `to` | `string` | End of date range (required if `from` is provided) |
+| Query Param | Type     | Description                                        |
+| :---------- | :------- | :------------------------------------------------- |
+| `from`      | `string` | Start of date range (required if `to` is provided) |
+| `to`        | `string` | End of date range (required if `from` is provided) |
 
 #### Update doctor profile
 
@@ -158,7 +245,7 @@ Accessible by doctors only. Body follows `UpdateDoctorDto`. Returns `MeUser`.
 
 ---
 
-## Patient
+### Patient
 
 #### Update patient profile
 
@@ -176,13 +263,13 @@ GET /api/patient/:id
 
 Accessible by doctors only.
 
-| Param | Type | Description |
-| :---- | :--- | :---------- |
-| `id` | `string` | **Required.** Patient ID |
+| Param | Type     | Description              |
+| :---- | :------- | :----------------------- |
+| `id`  | `string` | **Required.** Patient ID |
 
 ---
 
-## Consultation
+### Consultation
 
 #### Create consultation
 
@@ -198,7 +285,7 @@ Accessible by patients only. Body follows `CreateConsultationDto`.
 GET /api/consultation
 ```
 
-Returns consultations for the authenticated user. Doctors get their own consultations; patients get theirs.
+Returns consultations for the authenticated user. Doctors get their own; patients get theirs.
 
 #### Get consultation by ID
 
@@ -206,9 +293,9 @@ Returns consultations for the authenticated user. Doctors get their own consulta
 GET /api/consultation/:id
 ```
 
-| Param | Type | Description |
-| :---- | :--- | :---------- |
-| `id` | `string` | **Required.** Consultation ID |
+| Param | Type     | Description                   |
+| :---- | :------- | :---------------------------- |
+| `id`  | `string` | **Required.** Consultation ID |
 
 #### Add doctor notes
 
@@ -218,12 +305,12 @@ PATCH /api/consultation/:id/doctor-notes
 
 Accessible by doctors only.
 
-| Param | Type | Description |
-| :---- | :--- | :---------- |
-| `id` | `string` | **Required.** Consultation ID |
+| Param | Type     | Description                   |
+| :---- | :------- | :---------------------------- |
+| `id`  | `string` | **Required.** Consultation ID |
 
-| Body Field | Type | Description |
-| :--------- | :--- | :---------- |
+| Body Field    | Type     | Description                |
+| :------------ | :------- | :------------------------- |
 | `doctorNotes` | `string` | **Required.** Notes to add |
 
 #### Reschedule consultation
@@ -232,14 +319,14 @@ Accessible by doctors only.
 PATCH /api/consultation/:id/reschedule
 ```
 
-Only allowed when consultation status is `PENDING` and not `DONE`.
+Only allowed when consultation status is `PENDING`.
 
-| Param | Type | Description |
-| :---- | :--- | :---------- |
-| `id` | `string` | **Required.** Consultation ID |
+| Param | Type     | Description                   |
+| :---- | :------- | :---------------------------- |
+| `id`  | `string` | **Required.** Consultation ID |
 
-| Body Field | Type | Description |
-| :--------- | :--- | :---------- |
+| Body Field    | Type     | Description                           |
+| :------------ | :------- | :------------------------------------ |
 | `scheduledAt` | `string` | **Required.** New datetime (ISO 8601) |
 
 #### Cancel consultation
@@ -248,15 +335,15 @@ Only allowed when consultation status is `PENDING` and not `DONE`.
 PATCH /api/consultation/:id/cancel
 ```
 
-Not allowed when consultation is `DONE`.
+Not allowed when consultation status is `DONE`.
 
-| Param | Type | Description |
-| :---- | :--- | :---------- |
-| `id` | `string` | **Required.** Consultation ID |
+| Param | Type     | Description                   |
+| :---- | :------- | :---------------------------- |
+| `id`  | `string` | **Required.** Consultation ID |
 
 ---
 
-## Availability
+### Availability
 
 #### Get availability by doctor
 
@@ -264,8 +351,8 @@ Not allowed when consultation is `DONE`.
 GET /api/availability/:doctorId
 ```
 
-| Param | Type | Description |
-| :---- | :--- | :---------- |
+| Param      | Type     | Description             |
+| :--------- | :------- | :---------------------- |
 | `doctorId` | `string` | **Required.** Doctor ID |
 
 #### Upsert availability template
@@ -274,19 +361,19 @@ GET /api/availability/:doctorId
 PUT /api/availability
 ```
 
-Accessible by doctors only. Body follows `UpsertAvailabilityDto`. Creates or updates the authenticated doctor's availability template.
+Accessible by doctors only. Body follows `UpsertAvailabilityDto`. Creates or updates the authenticated doctor's weekly availability template.
 
 ---
 
-## Notification
+### Notification
 
-#### Get latest notification
+#### Get latest notifications
 
 ```http
 GET /api/notification/latest
 ```
 
-Returns the most recent notification for the authenticated user.
+Returns the most recent notifications for the authenticated user.
 
 #### Get all notifications
 
@@ -296,7 +383,7 @@ GET /api/notification
 
 Returns all notifications for the authenticated user.
 
-#### Mark all notifications as read
+#### Mark all as read
 
 ```http
 POST /api/notification/mark-all-read
