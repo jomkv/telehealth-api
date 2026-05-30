@@ -18,10 +18,14 @@ import {
   parseIsoToUtcDate,
   toUtcFromPhtParts,
 } from 'src/shared/timezone';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class ConsultationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async create(
     patientUserId: string,
@@ -36,11 +40,26 @@ export class ConsultationService {
     const [patient, doctor] = await Promise.all([
       this.prisma.patient.findUnique({
         where: { userId: patientUserId },
-        select: { id: true },
+        select: {
+          id: true,
+          user: {
+            select: {
+              name: true,
+            },
+          },
+        },
       }),
       this.prisma.doctor.findUnique({
         where: { id: doctorId },
-        select: { id: true },
+        select: {
+          id: true,
+          user: {
+            select: {
+              name: true,
+            },
+          },
+          userId: true,
+        },
       }),
     ]);
 
@@ -61,15 +80,33 @@ export class ConsultationService {
     const consultationId = randomUUID();
     const meetingLink = this.buildMeetingLink(consultationId);
 
-    return this.prisma.consultation.create({
-      data: {
-        id: consultationId,
-        patientId: patient.id,
-        doctorId: doctor.id,
-        scheduledAt,
-        patientNotes,
-        meetingLink,
-      },
+    return await this.prisma.$transaction(async (tx) => {
+      const newConsultation = await tx.consultation.create({
+        data: {
+          id: consultationId,
+          patientId: patient.id,
+          doctorId: doctor.id,
+          scheduledAt,
+          patientNotes,
+          meetingLink,
+        },
+      });
+
+      await this.notificationService.createNotification(
+        patientUserId,
+        'New Consultation',
+        `You have a new consultation with Dr. ${this.extractFirstName(doctor.user.name)}.`,
+        tx,
+      );
+
+      await this.notificationService.createNotification(
+        doctor.userId,
+        'New Consultation',
+        `You have a new consultation with Patient ${this.extractFirstName(patient.user.name)}.`,
+        tx,
+      );
+
+      return newConsultation;
     });
   }
 
@@ -165,10 +202,68 @@ export class ConsultationService {
     });
   }
 
-  addDoctorNotes(consultationId: string, doctorNotes: string) {
-    return this.prisma.consultation.update({
-      where: { id: consultationId },
-      data: { doctorNotes },
+  private async notifyPatientAndDoctor(
+    patientId: string,
+    doctorId: string,
+    title: string,
+    body: string,
+    tx: Prisma.TransactionClient,
+  ) {
+    await this.notificationService.createNotification(
+      patientId,
+      title,
+      body,
+      tx,
+    );
+
+    await this.notificationService.createNotification(
+      doctorId,
+      title,
+      body,
+      tx,
+    );
+  }
+
+  private extractFirstName(fullName: string): string {
+    try {
+      return fullName.split(' ')[0];
+    } catch {
+      return fullName;
+    }
+  }
+
+  async addDoctorNotes(consultationId: string, doctorNotes: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      // create notif, pass tx
+      const updatedConsultation = await tx.consultation.update({
+        where: { id: consultationId },
+        data: { doctorNotes },
+        include: {
+          patient: {
+            select: {
+              userId: true,
+            },
+          },
+          doctor: {
+            select: {
+              user: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      await this.notificationService.createNotification(
+        updatedConsultation.patient.userId,
+        'Consultation Updated',
+        `You received a consultation note from Dr. ${this.extractFirstName(updatedConsultation.doctor.user.name)}, check it out.`,
+        tx,
+      );
+
+      return updatedConsultation;
     });
   }
 
@@ -183,23 +278,87 @@ export class ConsultationService {
       excludeConsultationId: consultation.id,
     });
 
-    return this.prisma.consultation.update({
-      where: { id: consultation.id },
-      data: {
-        scheduledAt,
-        rescheduledFrom: consultation.scheduledAt,
-      },
+    return await this.prisma.$transaction(async (tx) => {
+      const updatedConsultation = await tx.consultation.update({
+        where: { id: consultation.id },
+        data: {
+          scheduledAt,
+          rescheduledFrom: consultation.scheduledAt,
+        },
+      });
+
+      const patient = consultation.patient;
+      const doctor = consultation.doctor;
+
+      await this.notificationService.createNotification(
+        patient.userId,
+        'Consultation Moved',
+        `Your consultation with Dr. ${this.extractFirstName(doctor.user.name)} has been moved.`,
+        tx,
+      );
+
+      await this.notificationService.createNotification(
+        doctor.userId,
+        'Consultation Moved',
+        `Your consultation with Patient ${this.extractFirstName(patient.user.name)} has been moved.`,
+        tx,
+      );
+
+      return updatedConsultation;
     });
   }
 
-  cancel(consultationId: string) {
-    return this.prisma.consultation.update({
-      where: {
-        id: consultationId,
-      },
-      data: {
-        status: ConsultationStatus.CANCELLED,
-      },
+  async cancel(consultationId: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      const updatedConsultation = await tx.consultation.update({
+        where: {
+          id: consultationId,
+        },
+        data: {
+          status: ConsultationStatus.CANCELLED,
+        },
+        include: {
+          patient: {
+            select: {
+              user: {
+                select: {
+                  name: true,
+                },
+              },
+              userId: true,
+            },
+          },
+          doctor: {
+            select: {
+              user: {
+                select: {
+                  name: true,
+                },
+              },
+              userId: true,
+            },
+          },
+        },
+      });
+
+      const patient = updatedConsultation.patient;
+      const doctor = updatedConsultation.doctor;
+
+      await this.notificationService.createNotification(
+        patient.userId,
+        'Consultation Cancelled',
+        `Your consultation with Dr. ${this.extractFirstName(doctor.user.name)} has been cancelled.`,
+        tx,
+      );
+
+      await this.notificationService.createNotification(
+        doctor.userId,
+        'Consultation Cancelled',
+        `Your consultation with Patient ${this.extractFirstName(patient.user.name)} has been cancelled.`,
+        tx,
+      );
+
+      return updatedConsultation;
     });
   }
 
