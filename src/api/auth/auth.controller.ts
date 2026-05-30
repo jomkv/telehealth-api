@@ -52,7 +52,7 @@ export class AuthController {
     res.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'none',
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
       domain: isProd ? ENV_VARS.prodDomain() : undefined,
     });
