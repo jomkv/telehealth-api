@@ -68,6 +68,9 @@ importers:
       multer:
         specifier: ^2.1.1
         version: 2.1.1
+      pg:
+        specifier: ^8.21.0
+        version: 8.21.0
       reflect-metadata:
         specifier: ^0.2.0
         version: 0.2.2
@@ -102,6 +105,9 @@ importers:
       '@types/node':
         specifier: ^20.3.1
         version: 20.19.41
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
       '@types/supertest':
         specifier: ^6.0.0
         version: 6.0.3
