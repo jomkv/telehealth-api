@@ -13,7 +13,7 @@ COPY . .
 
 RUN pnpx prisma generate
 
-RUN pnpm run build
+RUN pnpm run build && echo "=== DIST CONTENTS ===" && ls -la dist/
 
 # ─── Stage 2: Production ─────────────────────────────────────────────────────
 FROM node:20-alpine AS production
