@@ -69,6 +69,7 @@ export class AuthController {
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
+      domain: isProd ? ENV_VARS.prodDomain() : undefined,
     });
     return;
   }
